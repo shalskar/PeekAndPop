@@ -15,6 +15,8 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.RelativeLayout;
 
+import java.util.ArrayList;
+
 public class PeekAndPop {
 
     // These static values will be converted from dp to px
@@ -31,7 +33,7 @@ public class PeekAndPop {
 
     protected Builder builder;
     protected ViewGroup containerView;
-    protected View longClickView;
+    protected ArrayList<View> longClickViews;
     protected ViewGroup peekLayout;
     protected View peekView;
 
@@ -54,7 +56,7 @@ public class PeekAndPop {
     }
 
     protected void init() {
-        this.longClickView = builder.longClickView;
+        this.longClickViews = builder.longClickViews;
         this.containerView = builder.containerView;
 
         this.dragToActionListener = builder.dragToActionListener;
@@ -151,25 +153,26 @@ public class PeekAndPop {
     }
 
     /**
-     * Set an onLongClick, onClick and onTouch listener for the click view
+     * Set an onLongClick, onClick and onTouch listener for each long click view
      */
     protected void initialiseGestureListeners() {
-        longClickView.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                peek();
-                return false;
-            }
-        });
-
-        longClickView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-            }
-        });
-
-        longClickView.setOnTouchListener(clickViewOnTouchListener);
+        for(int i = 0; i < longClickViews.size(); i ++){
+            initialiseGestureListener(longClickViews.get(i));
+        }
     }
+
+    protected void initialiseGestureListener(View view){
+        view.setOnLongClickListener(onLongClickListener);
+        view.setOnTouchListener(clickViewOnTouchListener);
+    }
+
+    private View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
+        @Override
+        public boolean onLongClick(View v) {
+            peek();
+            return false;
+        }
+    };
 
     /**
      * Check if user has moved or lifted their finger.
@@ -407,6 +410,11 @@ public class PeekAndPop {
         return true;
     }
 
+    public void addLongClickView(View view){
+        this.longClickViews.add(view);
+        initialiseGestureListener(view);
+    }
+
     public View getPeekView() {
         return peekView;
     }
@@ -422,7 +430,7 @@ public class PeekAndPop {
         protected int peekLayoutId;
         protected ViewGroup parentViewGroup;
         protected ViewGroup containerView;
-        protected View longClickView;
+        protected ArrayList<View> longClickViews;
 
         // optional extras
         protected int dragToActionViewLayout = -1;
@@ -443,8 +451,10 @@ public class PeekAndPop {
             return this;
         }
 
-        public Builder longClickView(View longClickView) {
-            this.longClickView = longClickView;
+        public Builder longClickViews(View... longClickViews) {
+            for (int i = 0; i < longClickViews.length; i++) {
+                this.longClickViews.add(longClickViews[i]);
+            }
             return this;
         }
 
