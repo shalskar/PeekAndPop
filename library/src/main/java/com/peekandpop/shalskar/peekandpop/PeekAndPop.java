@@ -98,7 +98,6 @@ public class PeekAndPop {
             public void onGlobalLayout() {
                 getPeekViewOriginalPosition();
                 getMaxDrag();
-                peekView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
             }
         });
 
@@ -328,7 +327,7 @@ public class PeekAndPop {
             int adjust = (int) peekView.getY() - y;
             float position = touchY + adjust - initialTouchOffset;
             float totalDistanceTravelled = 0 - (position - peekViewOriginalPosition[1]);
-            float amountToMove = peekViewOriginalPosition[1] - (totalDistanceTravelled / 3.75f + (float) Math.sqrt(totalDistanceTravelled) * 4);
+            float amountToMove = peekViewOriginalPosition[1] - (totalDistanceTravelled / 3f + (float) Math.sqrt(totalDistanceTravelled) * 4);
 
             if (touchY > peekViewOriginalRawPosition[1] + initialTouchOffset) {
                 peekView.setY(peekViewOriginalPosition[1]);
@@ -341,7 +340,7 @@ public class PeekAndPop {
             int adjust = (int) peekView.getX() - x;
             float position = touchX + adjust - initialTouchOffset;
             float totalDistanceTravelled = 0 - (position - peekViewOriginalPosition[0]);
-            float amountToMove = peekViewOriginalPosition[0] - (totalDistanceTravelled / 3.75f + (float) Math.sqrt(totalDistanceTravelled) * 4);
+            float amountToMove = peekViewOriginalPosition[0] - (totalDistanceTravelled / 3f + (float) Math.sqrt(totalDistanceTravelled) * 4);
 
             if (touchX > peekViewOriginalRawPosition[0] + initialTouchOffset) {
                 peekView.setX(peekViewOriginalPosition[0]);
