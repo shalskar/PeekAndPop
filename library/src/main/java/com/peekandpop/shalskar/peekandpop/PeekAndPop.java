@@ -169,7 +169,7 @@ public class PeekAndPop {
     private View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
         @Override
         public boolean onLongClick(View v) {
-            peek(v);
+            peek(v, longClickViews.indexOf(v));
             return false;
         }
     };
@@ -188,9 +188,9 @@ public class PeekAndPop {
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_UP) {
-                pop(v);
+                pop(v, longClickViews.indexOf(v));
                 if (dragToActionListener != null) {
-                    checkIfDraggedToAction(v);
+                    checkIfDraggedToAction(v, longClickViews.indexOf(v));
                 }
             } else if (event.getAction() == MotionEvent.ACTION_MOVE && dragToActionListener != null) {
                 int touchX = (int) event.getRawX();
@@ -222,13 +222,13 @@ public class PeekAndPop {
      * Check if the peek view has been dragged passed the drag to action threshold and
      * send a dragged to action event if it has.
      */
-    private void checkIfDraggedToAction(View longClickView) {
+    private void checkIfDraggedToAction(View longClickView, int index) {
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             if (peekView.getY() < maxDrag + dragToActionThreshold)
-                dragToActionListener.draggedToAction(longClickView);
+                dragToActionListener.draggedToAction(longClickView, index);
         } else {
             if (peekView.getX() < maxDrag + dragToActionThreshold)
-                dragToActionListener.draggedToAction(longClickView);
+                dragToActionListener.draggedToAction(longClickView, index);
         }
     }
 
@@ -269,9 +269,9 @@ public class PeekAndPop {
         }
     }
 
-    private void peek(View longClickView) {
+    private void peek(View longClickView, int index) {
         if (this.generalActionListener != null) {
-            this.generalActionListener.peek(longClickView);
+            this.generalActionListener.peek(longClickView, index);
         }
         peekLayout.setAlpha(1f);
 
@@ -286,9 +286,9 @@ public class PeekAndPop {
         }
     }
 
-    private void pop(View longClickView) {
+    private void pop(View longClickView, int index) {
         if (this.generalActionListener != null) {
-            this.generalActionListener.pop(longClickView);
+            this.generalActionListener.pop(longClickView, index);
         }
         resetViews();
 
@@ -424,6 +424,14 @@ public class PeekAndPop {
         return true;
     }
 
+    public void setDragToActionListener(DragToActionListener dragToActionListener) {
+        this.dragToActionListener = dragToActionListener;
+    }
+
+    public void setGeneralActionListener(GeneralActionListener generalActionListener) {
+        this.generalActionListener = generalActionListener;
+    }
+
     public void addLongClickView(View view){
         this.longClickViews.add(view);
         initialiseGestureListener(view);
@@ -528,13 +536,13 @@ public class PeekAndPop {
 
 
     public interface DragToActionListener {
-        public void draggedToAction(View longClickView);
+        public void draggedToAction(View longClickView, int position);
     }
 
     public interface GeneralActionListener {
-        public void peek(View longClickView);
+        public void peek(View longClickView, int position);
 
-        public void pop(View longClickView);
+        public void pop(View longClickView, int position);
     }
 
 }
