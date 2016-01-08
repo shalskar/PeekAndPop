@@ -169,7 +169,7 @@ public class PeekAndPop {
     private View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
         @Override
         public boolean onLongClick(View v) {
-            peek();
+            peek(v);
             return false;
         }
     };
@@ -188,9 +188,9 @@ public class PeekAndPop {
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_UP) {
-                pop();
+                pop(v);
                 if (dragToActionListener != null) {
-                    checkIfDraggedToAction();
+                    checkIfDraggedToAction(v);
                 }
             } else if (event.getAction() == MotionEvent.ACTION_MOVE && dragToActionListener != null) {
                 if (hasEnteredPeekViewBounds) {
@@ -210,13 +210,13 @@ public class PeekAndPop {
      * Check if the peek view has been dragged passed the drag to action threshold and
      * send a dragged to action event if it has.
      */
-    private void checkIfDraggedToAction() {
+    private void checkIfDraggedToAction(View longClickView) {
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             if (peekView.getY() < maxDrag + dragToActionThreshold)
-                dragToActionListener.draggedToAction();
+                dragToActionListener.draggedToAction(longClickView);
         } else {
             if (peekView.getX() < maxDrag + dragToActionThreshold)
-                dragToActionListener.draggedToAction();
+                dragToActionListener.draggedToAction(longClickView);
         }
     }
 
@@ -259,8 +259,8 @@ public class PeekAndPop {
         }
     }
 
-    private void peek() {
-        this.generalActionListener.peek();
+    private void peek(View longClickView) {
+        this.generalActionListener.peek(longClickView);
         peekLayout.setAlpha(1f);
 
         Animation peekViewAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.peek);
@@ -274,8 +274,8 @@ public class PeekAndPop {
         }
     }
 
-    private void pop() {
-        this.generalActionListener.pop();
+    private void pop(View longClickView) {
+        this.generalActionListener.pop(longClickView);
         resetViews();
 
         Animation popAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.pop);
@@ -513,13 +513,13 @@ public class PeekAndPop {
 
 
     public interface DragToActionListener {
-        public void draggedToAction();
+        public void draggedToAction(View longClickView);
     }
 
     public interface GeneralActionListener {
-        public void peek();
+        public void peek(View longClickView);
 
-        public void pop();
+        public void pop(View longClickView);
     }
 
 }
