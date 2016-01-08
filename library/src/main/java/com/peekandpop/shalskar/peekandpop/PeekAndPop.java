@@ -33,7 +33,6 @@ public class PeekAndPop {
 
     protected Builder builder;
     protected ViewGroup containerView;
-    protected ArrayList<View> longClickViews;
     protected ViewGroup peekLayout;
     protected View peekView;
 
@@ -56,7 +55,6 @@ public class PeekAndPop {
     }
 
     protected void init() {
-        this.longClickViews = builder.longClickViews;
         this.containerView = builder.containerView;
 
         this.dragToActionListener = builder.dragToActionListener;
@@ -156,23 +154,15 @@ public class PeekAndPop {
      * Set an onLongClick, onClick and onTouch listener for each long click view
      */
     protected void initialiseGestureListeners() {
-        for(int i = 0; i < longClickViews.size(); i ++){
-            initialiseGestureListener(longClickViews.get(i));
+        for(int i = 0; i < builder.longClickViews.size(); i ++){
+            initialiseGestureListener(builder.longClickViews.get(i), -1);
         }
     }
 
-    protected void initialiseGestureListener(View view){
-        view.setOnLongClickListener(onLongClickListener);
-        view.setOnTouchListener(clickViewOnTouchListener);
+    protected void initialiseGestureListener(View view, int position){
+        view.setOnLongClickListener(new PeekAndPopOnLongClickListener(position));
+        view.setOnTouchListener(new PeekAndPopOnTouchListener(position));
     }
-
-    private View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
-        @Override
-        public boolean onLongClick(View v) {
-            peek(v, longClickViews.indexOf(v));
-            return false;
-        }
-    };
 
     /**
      * Check if user has moved or lifted their finger.
@@ -184,29 +174,25 @@ public class PeekAndPop {
      * If the user is within the bounds, and is at the edges of the view, then
      * move it appropriately
      */
-    private View.OnTouchListener clickViewOnTouchListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            if (event.getAction() == MotionEvent.ACTION_UP) {
-                pop(v, longClickViews.indexOf(v));
-                if (dragToActionListener != null) {
-                    checkIfDraggedToAction(v, longClickViews.indexOf(v));
-                }
-            } else if (event.getAction() == MotionEvent.ACTION_MOVE && dragToActionListener != null) {
-                int touchX = (int) event.getRawX();
-                int touchY = (int) event.getRawY();
-                if (hasEnteredPeekViewBounds) {
-                    setOffset(touchX, touchY);
-                    movePeekView(touchX, touchY);
-                } else if (pointInViewBounds(peekView, touchX, touchY)) {
-                    hasEnteredPeekViewBounds = true;
-                    Log.d("PeekAndPop", "has entered peek view bounds");
-                }
-            }
-            return false;
-        }
-    };
 
+    private void respondToTouch(View v, MotionEvent event, int position){
+        if (event.getAction() == MotionEvent.ACTION_UP) {
+            pop(v, position);
+            if (dragToActionListener != null) {
+                checkIfDraggedToAction(v, position);
+            }
+        } else if (event.getAction() == MotionEvent.ACTION_MOVE && dragToActionListener != null) {
+            int touchX = (int) event.getRawX();
+            int touchY = (int) event.getRawY();
+            if (hasEnteredPeekViewBounds) {
+                setOffset(touchX, touchY);
+                movePeekView(touchX, touchY);
+            } else if (pointInViewBounds(peekView, touchX, touchY)) {
+                hasEnteredPeekViewBounds = true;
+                Log.d("PeekAndPop", "has entered peek view bounds");
+            }
+        }
+    }
 
     private void setOffset(int x, int y){
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
@@ -432,9 +418,15 @@ public class PeekAndPop {
         this.generalActionListener = generalActionListener;
     }
 
-    public void addLongClickView(View view){
-        this.longClickViews.add(view);
-        initialiseGestureListener(view);
+    /**
+     * Adds a view to receive long click and touch events
+     *
+     * @param view view to receive events
+     * @param position add position of view if in a list, this will be returned in the general action listener
+     *                 and drag to action listener.
+     */
+    public void addLongClickView(View view, int position){
+        initialiseGestureListener(view, position);
     }
 
     public View getPeekView() {
@@ -533,6 +525,42 @@ public class PeekAndPop {
         }
 
     }
+
+    /**
+     *
+     * Listeners
+     */
+
+    public class PeekAndPopOnLongClickListener implements View.OnLongClickListener{
+
+        private int position;
+
+        public PeekAndPopOnLongClickListener(int position){
+            this.position = position;
+        }
+
+        @Override
+        public boolean onLongClick(View v) {
+            peek(v, position);
+            return false;
+        }
+    }
+
+    public class PeekAndPopOnTouchListener implements View.OnTouchListener{
+
+        private int position;
+
+        public PeekAndPopOnTouchListener(int position){
+            this.position = position;
+        }
+
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            respondToTouch(v, event, position);
+            return false;
+        }
+    }
+
 
 
     public interface DragToActionListener {
