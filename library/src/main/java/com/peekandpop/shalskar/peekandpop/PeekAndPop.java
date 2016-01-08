@@ -193,11 +193,12 @@ public class PeekAndPop {
                     checkIfDraggedToAction(v);
                 }
             } else if (event.getAction() == MotionEvent.ACTION_MOVE && dragToActionListener != null) {
+                int touchX = (int) event.getRawX();
+                int touchY = (int) event.getRawY();
                 if (hasEnteredPeekViewBounds) {
-                    if (initialTouchOffset == -1)
-                        initialTouchOffset = calculateOffset((int) event.getRawX(), (int) event.getRawY());
-                    movePeekView((int) event.getRawX(), (int) event.getRawY());
-                } else if (pointInViewBounds(peekView, (int) event.getRawX(), (int) event.getRawY())) {
+                    setOffset(touchX, touchY);
+                    movePeekView(touchX, touchY);
+                } else if (pointInViewBounds(peekView, touchX, touchY)) {
                     hasEnteredPeekViewBounds = true;
                     Log.d("PeekAndPop", "has entered peek view bounds");
                 }
@@ -205,6 +206,17 @@ public class PeekAndPop {
             return false;
         }
     };
+
+
+    private void setOffset(int x, int y){
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+            if(initialTouchOffset < peekView.getHeight()/2)
+                initialTouchOffset = Math.max(calculateOffset(x, y), initialTouchOffset);
+        } else {
+            if(initialTouchOffset < peekView.getWidth()/2)
+                initialTouchOffset = Math.max(calculateOffset(x, y), initialTouchOffset);
+        }
+    }
 
     /**
      * Check if the peek view has been dragged passed the drag to action threshold and
@@ -250,12 +262,10 @@ public class PeekAndPop {
     }
 
     private int calculateOffset(int touchX, int touchY) {
-        int[] l = new int[2];
-        peekView.getLocationOnScreen(l);
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            return touchY - l[1];
+            return touchY - (int)peekViewOriginalRawPosition[1];
         } else {
-            return touchX - l[0];
+            return touchX - (int)peekViewOriginalRawPosition[0];
         }
     }
 
@@ -439,6 +449,7 @@ public class PeekAndPop {
 
         public Builder(@NonNull Context context) {
             this.context = context;
+            this.longClickViews = new ArrayList<>();
         }
 
         public Builder peekLayout(int peekLayoutId) {
