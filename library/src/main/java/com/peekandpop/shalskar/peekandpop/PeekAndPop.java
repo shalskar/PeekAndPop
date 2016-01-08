@@ -1,5 +1,6 @@
 package com.peekandpop.shalskar.peekandpop;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.os.Build;
@@ -32,7 +33,6 @@ public class PeekAndPop {
     protected int maxDrag;
 
     protected Builder builder;
-    protected ViewGroup containerView;
     protected ViewGroup peekLayout;
     protected View peekView;
 
@@ -55,12 +55,10 @@ public class PeekAndPop {
     }
 
     protected void init() {
-        this.containerView = builder.containerView;
-
         this.dragToActionListener = builder.dragToActionListener;
         this.generalActionListener = builder.generalActionListener;
 
-        orientation = builder.context.getResources().getConfiguration().orientation;
+        orientation = builder.activity.getResources().getConfiguration().orientation;
 
         initialiseValues();
         createPeekView();
@@ -85,7 +83,8 @@ public class PeekAndPop {
      * If a dragToActionViewLayout is supplied, inflate the dragToActionViewLayout
      */
     protected void createPeekView() {
-        LayoutInflater inflater = LayoutInflater.from(builder.context);
+        LayoutInflater inflater = LayoutInflater.from(builder.activity);
+        ViewGroup containerView = (ViewGroup) builder.activity.findViewById(android.R.id.content);
 
         // Center peek view in the peek layout and add to the container view group
         peekLayout = (RelativeLayout) inflater.inflate(R.layout.peek_background, containerView, false);
@@ -261,10 +260,10 @@ public class PeekAndPop {
         }
         peekLayout.setAlpha(1f);
 
-        Animation peekViewAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.peek);
+        Animation peekViewAnimation = AnimationUtils.loadAnimation(builder.activity, R.anim.peek);
         peekView.startAnimation(peekViewAnimation);
 
-        Animation peekBackgroundAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.fade_in);
+        Animation peekBackgroundAnimation = AnimationUtils.loadAnimation(builder.activity, R.anim.fade_in);
         peekLayout.startAnimation(peekBackgroundAnimation);
 
         if (builder.parentViewGroup != null) {
@@ -278,7 +277,7 @@ public class PeekAndPop {
         }
         resetViews();
 
-        Animation popAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.pop);
+        Animation popAnimation = AnimationUtils.loadAnimation(builder.activity, R.anim.pop);
         popAnimation.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation animation) {
@@ -299,7 +298,7 @@ public class PeekAndPop {
         });
         peekView.startAnimation(popAnimation);
 
-        Animation fadeOutAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.fade_out);
+        Animation fadeOutAnimation = AnimationUtils.loadAnimation(builder.activity, R.anim.fade_out);
         peekLayout.startAnimation(fadeOutAnimation);
 
         if (dragToActionViewLayout != null) {
@@ -393,7 +392,7 @@ public class PeekAndPop {
     }
 
     private int convertDpToPx(int dp) {
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, builder.context.getResources().getDisplayMetrics());
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, builder.activity.getResources().getDisplayMetrics());
     }
 
     private boolean pointInViewBounds(View view, int x, int y) {
@@ -440,10 +439,9 @@ public class PeekAndPop {
     public static class Builder {
 
         // essentials
-        protected final Context context;
+        protected final Activity activity;
         protected int peekLayoutId;
         protected ViewGroup parentViewGroup;
-        protected ViewGroup containerView;
         protected ArrayList<View> longClickViews;
 
         // optional extras
@@ -451,18 +449,13 @@ public class PeekAndPop {
         protected DragToActionListener dragToActionListener;
         protected GeneralActionListener generalActionListener;
 
-        public Builder(@NonNull Context context) {
-            this.context = context;
+        public Builder(@NonNull Activity activity) {
+            this.activity = activity;
             this.longClickViews = new ArrayList<>();
         }
 
         public Builder peekLayout(int peekLayoutId) {
             this.peekLayoutId = peekLayoutId;
-            return this;
-        }
-
-        public Builder containerView(ViewGroup containerView) {
-            this.containerView = containerView;
             return this;
         }
 
