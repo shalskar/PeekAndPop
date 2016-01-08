@@ -270,7 +270,9 @@ public class PeekAndPop {
     }
 
     private void peek(View longClickView) {
-        this.generalActionListener.peek(longClickView);
+        if (this.generalActionListener != null) {
+            this.generalActionListener.peek(longClickView);
+        }
         peekLayout.setAlpha(1f);
 
         Animation peekViewAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.peek);
@@ -285,7 +287,9 @@ public class PeekAndPop {
     }
 
     private void pop(View longClickView) {
-        this.generalActionListener.pop(longClickView);
+        if (this.generalActionListener != null) {
+            this.generalActionListener.pop(longClickView);
+        }
         resetViews();
 
         Animation popAnimation = AnimationUtils.loadAnimation(builder.context, R.anim.pop);
