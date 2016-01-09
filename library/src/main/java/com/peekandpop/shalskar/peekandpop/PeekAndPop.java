@@ -66,6 +66,8 @@ public class PeekAndPop {
         this.onGeneralActionListener = builder.onGeneralActionListener;
         this.onLongHoldListener = builder.onLongHoldListener;
 
+        this.longHoldViews = new ArrayList<>();
+
         orientation = builder.activity.getResources().getConfiguration().orientation;
 
         initialiseValues();
@@ -127,9 +129,6 @@ public class PeekAndPop {
         if (builder.dragToActionViewLayout != -1) {
             addDragToActionLayout(inflater);
         }
-
-        initialiseLongHoldViews();
-
     }
 
     /**
@@ -171,14 +170,6 @@ public class PeekAndPop {
     protected void initialiseGestureListener(View view, int position) {
         view.setOnLongClickListener(new PeekAndPopOnLongClickListener(position));
         view.setOnTouchListener(new PeekAndPopOnTouchListener(position));
-    }
-
-    protected void initialiseLongHoldViews(){
-        this.longHoldViews = new ArrayList<>();
-
-        for (int i = 0; i < builder.longHoldViewIds.size(); i++) {
-            this.longHoldViews.add(new LongHoldView(peekView.findViewById(builder.longHoldViewIds.get(i)), -1));
-        }
     }
 
     /**
@@ -243,7 +234,11 @@ public class PeekAndPop {
                     // Has already sent an event
                 } else if(currentTime - longHoldView.getHoldStart() > LONG_HOLD_DURATION) {
                     onLongHoldListener.onLongHold(longHoldView.getView(), position);
-                    longHoldView.setHoldStart(0);
+
+                    if(longHoldView.isReceiveMultipleEvents())
+                        longHoldView.setHoldStart(-1);
+                    else
+                        longHoldView.setHoldStart(0);
                 }
             } else {
                 longHoldView.setHoldStart(-1);
@@ -485,8 +480,16 @@ public class PeekAndPop {
         initialiseGestureListener(view, position);
     }
 
-    public void addLongHoldView(int longHoldViewId){
-        this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), -1));
+
+    /**
+     * Specify id of view WITHIN the peek layout, this view will receive on long hold events.
+     * You can add multiple on long hold views
+     *
+     * @param longHoldViewId id of the view to receive on long hold events
+     * @return
+     */
+    public void addLongHoldView(int longHoldViewId, boolean receiveMultipleEvents){
+        this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), -1, receiveMultipleEvents));
     }
 
     public View getPeekView() {
@@ -506,7 +509,6 @@ public class PeekAndPop {
         // optional extras
         protected ViewGroup parentViewGroup;
         protected ArrayList<View> longClickViews;
-        protected ArrayList<Integer> longHoldViewIds;
         protected int dragToActionViewLayout = -1;
         protected OnDragToActionListener onDragToActionListener;
         protected OnGeneralActionListener onGeneralActionListener;
@@ -515,7 +517,6 @@ public class PeekAndPop {
         public Builder(@NonNull Activity activity) {
             this.activity = activity;
             this.longClickViews = new ArrayList<>();
-            this.longHoldViewIds = new ArrayList<>();
         }
 
         /**
@@ -598,19 +599,6 @@ public class PeekAndPop {
          */
         public Builder parentViewGroupToDisallowTouchEvents(@NonNull ViewGroup parentViewGroup) {
             this.parentViewGroup = parentViewGroup;
-            return this;
-        }
-
-        /**
-         * Specify ids of views WITHIN the peek layout, these views will receive on long hold events
-         *
-         * @param longHoldViewIds ids of the views to receive on long hold events
-         * @return
-         */
-        public Builder longHoldViewIds(int... longHoldViewIds) {
-            for (int i = 0; i < longHoldViewIds.length; i++) {
-                this.longHoldViewIds.add(longHoldViewIds[i]);
-            }
             return this;
         }
 

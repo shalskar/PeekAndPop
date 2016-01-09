@@ -11,9 +11,12 @@ public class LongHoldView {
 
     private long holdStart;
 
-    public LongHoldView(View view, int holdStart) {
+    private boolean receiveMultipleEvents;
+
+    public LongHoldView(View view, int holdStart, boolean receiveMultipleEvents) {
         this.view = view;
         this.holdStart = holdStart;
+        this.receiveMultipleEvents = receiveMultipleEvents;
     }
 
     public View getView() {
@@ -30,5 +33,13 @@ public class LongHoldView {
 
     public void setHoldStart(long holdStart) {
         this.holdStart = holdStart;
+    }
+
+    public boolean isReceiveMultipleEvents() {
+        return receiveMultipleEvents;
+    }
+
+    public void setReceiveMultipleEvents(boolean receiveMultipleEvents) {
+        this.receiveMultipleEvents = receiveMultipleEvents;
     }
 }
