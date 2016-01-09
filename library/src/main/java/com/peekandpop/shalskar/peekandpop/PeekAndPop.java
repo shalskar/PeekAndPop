@@ -14,6 +14,8 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.RelativeLayout;
 
+import com.peekandpop.shalskar.peekandpop.model.LongHoldView;
+
 import java.util.ArrayList;
 
 public class PeekAndPop {
@@ -25,6 +27,8 @@ public class PeekAndPop {
     protected static final int DRAG_TO_ACTION_MOVE_AMOUNT = 128;
 
     protected static final float DRAG_TO_ACTION_START_SCALE = 0.25f;
+
+    protected static final long LONG_HOLD_DURATION = 500;
 
     protected int dragAmount;
     protected int dragToActionThreshold;
@@ -38,7 +42,7 @@ public class PeekAndPop {
 
     protected View dragToActionViewLayout;
 
-    protected ArrayList<View> longHoldViews;
+    protected ArrayList<LongHoldView> longHoldViews;
 
     protected OnDragToActionListener onDragToActionListener;
     protected OnGeneralActionListener onGeneralActionListener;
@@ -173,7 +177,7 @@ public class PeekAndPop {
         this.longHoldViews = new ArrayList<>();
 
         for (int i = 0; i < builder.longHoldViewIds.size(); i++) {
-            this.longHoldViews.add(peekView.findViewById(builder.longHoldViewIds.get(i)));
+            this.longHoldViews.add(new LongHoldView(peekView.findViewById(builder.longHoldViewIds.get(i)), -1));
         }
     }
 
@@ -219,11 +223,30 @@ public class PeekAndPop {
         }
     }
 
+    /**
+     * Check all the long hold views to see if they are being held and if so for how long
+     * they have been held and send a long hold event if > 500ms.
+     *
+     * @param x
+     * @param y
+     * @param position
+     */
     private void checkLongHoldViews(int x, int y, int position){
         for (int i = 0; i < longHoldViews.size(); i++) {
-            View longHoldView = longHoldViews.get(i);
-            if(pointInViewBounds(longHoldView, x, y)){
-                onLongHoldListener.onLongHold(longHoldView, position);
+            LongHoldView longHoldView = longHoldViews.get(i);
+
+            if(pointInViewBounds(longHoldView.getView(), x, y)){
+                long currentTime = System.currentTimeMillis();
+                if(longHoldView.getHoldStart() == -1){
+                    longHoldView.setHoldStart(currentTime);
+                } else if(longHoldView.getHoldStart() == 0){
+                    // Has already sent an event
+                } else if(currentTime - longHoldView.getHoldStart() > LONG_HOLD_DURATION) {
+                    onLongHoldListener.onLongHold(longHoldView.getView(), position);
+                    longHoldView.setHoldStart(0);
+                }
+            } else {
+                longHoldView.setHoldStart(-1);
             }
         }
     }
@@ -346,6 +369,10 @@ public class PeekAndPop {
             dragToActionViewLayout.setAlpha(0);
         }
 
+        for (int i = 0; i < longHoldViews.size(); i++) {
+            longHoldViews.get(i).setHoldStart(-1);
+        }
+
     }
 
     /**
@@ -459,7 +486,7 @@ public class PeekAndPop {
     }
 
     public void addLongHoldView(int longHoldViewId){
-        this.longHoldViews.add(peekView.findViewById(longHoldViewId));
+        this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), -1));
     }
 
     public View getPeekView() {
