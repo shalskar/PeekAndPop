@@ -153,6 +153,7 @@ public class PeekAndPop {
         }
 
         peekLayout.addView(dragToActionViewLayout, layoutParams);
+        dragToActionViewLayout.setAlpha(0);
         dragToActionViewLayout.setScaleX(DRAG_TO_ACTION_START_SCALE);
         dragToActionViewLayout.setScaleY(DRAG_TO_ACTION_START_SCALE);
 
@@ -397,7 +398,7 @@ public class PeekAndPop {
             } else {
                 peekView.setY(amountToMove);
             }
-        } else {
+        } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
             int adjust = (int) peekView.getX() - peekViewRawX;
             float adjustedPosition = touchX + adjust - initialTouchOffset;
             float totalDistanceTravelled = 0 - (adjustedPosition - peekViewOriginalPosition[0]);
