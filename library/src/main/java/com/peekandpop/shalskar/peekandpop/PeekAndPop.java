@@ -3,9 +3,8 @@ package com.peekandpop.shalskar.peekandpop;
 import android.app.Activity;
 import android.content.res.Configuration;
 import android.os.Build;
+import android.os.Vibrator;
 import android.support.annotation.NonNull;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -19,6 +18,8 @@ import android.widget.RelativeLayout;
 import com.peekandpop.shalskar.peekandpop.model.LongHoldView;
 
 import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class PeekAndPop {
 
@@ -30,7 +31,9 @@ public class PeekAndPop {
 
     protected static final float DRAG_TO_ACTION_START_SCALE = 0.25f;
 
-    protected static final long LONG_HOLD_DURATION = 1000;
+    protected static final long LONG_HOLD_DURATION = 750;
+    protected static final long LONG_HOLD_REPEAT_DURATION = 1500;
+    protected static final long LONG_HOLD_VIBRATE_DURATION = 20;
 
     protected int dragAmount;
     protected int dragToActionThreshold;
@@ -237,36 +240,58 @@ public class PeekAndPop {
 
     /**
      * Check all the long hold views to see if they are being held and if so for how long
-     * they have been held and send a long hold event if > 500ms.
+     * they have been held and send a long hold event if > 750ms.
      *
      * @param x
      * @param y
      * @param position
      */
 
-    // todo change this to a timer
-    private void checkLongHoldViews(int x, int y, int position) {
+    private void checkLongHoldViews(int x, int y, final int position) {
         for (int i = 0; i < longHoldViews.size(); i++) {
-            LongHoldView longHoldView = longHoldViews.get(i);
+            final LongHoldView longHoldView = longHoldViews.get(i);
+            boolean viewInBounds = pointInViewBounds(longHoldView.getView(), x, y);
 
-            if (pointInViewBounds(longHoldView.getView(), x, y)) {
-                long currentTime = System.currentTimeMillis();
-                if (longHoldView.getHoldStart() == -1) {
-                    longHoldView.setHoldStart(currentTime);
-                } else if (longHoldView.getHoldStart() == 0) {
-                    // Has already sent an event
-                } else if (currentTime - longHoldView.getHoldStart() > LONG_HOLD_DURATION) {
-                    onLongHoldListener.onLongHold(longHoldView.getView(), position);
-
-                    if (longHoldView.isReceiveMultipleEvents())
-                        longHoldView.setHoldStart(-1);
-                    else
-                        longHoldView.setHoldStart(0);
-                }
-            } else {
-                longHoldView.setHoldStart(-1);
+            if (viewInBounds && longHoldView.getLongHoldTimer() == null) {
+                setLongHoldViewTimer(longHoldView, position, LONG_HOLD_DURATION);
+            } else if (!viewInBounds && longHoldView.getLongHoldTimer() != null) {
+                longHoldView.getLongHoldTimer().cancel();
+                longHoldView.setLongHoldTimer(null);
             }
         }
+    }
+
+    /**
+     * Sets a timer on the long hold view that will send a long hold event after 750ms
+     * If receiveMultipleEvents is true, it will set another timer directly after for 1500ms
+     *
+     * @param longHoldView
+     * @param position
+     * @param duration
+     */
+    private void setLongHoldViewTimer(final LongHoldView longHoldView, final int position, long duration) {
+        final Timer longHoldTimer = new Timer();
+        longHoldTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                sendOnLongHoldEvent(longHoldView.getView(), position);
+                if (longHoldView.isReceiveMultipleEvents())
+                    setLongHoldViewTimer(longHoldView, position, LONG_HOLD_REPEAT_DURATION);
+            }
+        }, duration);
+
+        longHoldView.setLongHoldTimer(longHoldTimer);
+    }
+
+    private void sendOnLongHoldEvent(final View view, final int position) {
+        builder.activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ((Vibrator)builder.activity.getSystemService(Activity.VIBRATOR_SERVICE)).vibrate(LONG_HOLD_VIBRATE_DURATION);
+                onLongHoldListener.onLongHold(view, position);
+            }
+        });
+
     }
 
     /**
@@ -402,9 +427,12 @@ public class PeekAndPop {
         }
 
         for (int i = 0; i < longHoldViews.size(); i++) {
-            longHoldViews.get(i).setHoldStart(-1);
+            Timer longHoldTimer = longHoldViews.get(i).getLongHoldTimer();
+            if (longHoldTimer != null) {
+                longHoldTimer.cancel();
+                longHoldViews.get(i).setLongHoldTimer(null);
+            }
         }
-
     }
 
     /**
@@ -519,7 +547,7 @@ public class PeekAndPop {
      * @return
      */
     public void addLongHoldView(int longHoldViewId, boolean receiveMultipleEvents) {
-        this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), -1, receiveMultipleEvents));
+        this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), receiveMultipleEvents));
     }
 
     public View getPeekView() {
@@ -658,7 +686,7 @@ public class PeekAndPop {
         @Override
         public boolean onLongClick(View v) {
             peek(v, position);
-            return false;
+            return true;
         }
     }
 

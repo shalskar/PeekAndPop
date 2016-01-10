@@ -2,6 +2,8 @@ package com.peekandpop.shalskar.peekandpop.model;
 
 import android.view.View;
 
+import java.util.Timer;
+
 /**
  * Created by Vincent on 9/01/2016.
  */
@@ -9,13 +11,12 @@ public class LongHoldView {
 
     private View view;
 
-    private long holdStart;
+    protected Timer longHoldTimer;
 
     private boolean receiveMultipleEvents;
 
-    public LongHoldView(View view, int holdStart, boolean receiveMultipleEvents) {
+    public LongHoldView(View view, boolean receiveMultipleEvents) {
         this.view = view;
-        this.holdStart = holdStart;
         this.receiveMultipleEvents = receiveMultipleEvents;
     }
 
@@ -27,19 +28,19 @@ public class LongHoldView {
         this.view = view;
     }
 
-    public long getHoldStart() {
-        return holdStart;
-    }
-
-    public void setHoldStart(long holdStart) {
-        this.holdStart = holdStart;
-    }
-
     public boolean isReceiveMultipleEvents() {
         return receiveMultipleEvents;
     }
 
     public void setReceiveMultipleEvents(boolean receiveMultipleEvents) {
         this.receiveMultipleEvents = receiveMultipleEvents;
+    }
+
+    public Timer getLongHoldTimer() {
+        return longHoldTimer;
+    }
+
+    public void setLongHoldTimer(Timer longHoldTimer) {
+        this.longHoldTimer = longHoldTimer;
     }
 }
