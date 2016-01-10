@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -28,7 +30,7 @@ public class PeekAndPop {
 
     protected static final float DRAG_TO_ACTION_START_SCALE = 0.25f;
 
-    protected static final long LONG_HOLD_DURATION = 500;
+    protected static final long LONG_HOLD_DURATION = 1000;
 
     protected int dragAmount;
     protected int dragToActionThreshold;
@@ -49,8 +51,8 @@ public class PeekAndPop {
     protected OnLongHoldListener onLongHoldListener;
 
     protected float[] peekViewOriginalPosition;
-    protected float[] peekViewOriginalRawPosition;
     protected float initialTouchOffset = -1;
+    private int adjust;
 
     protected boolean hasEnteredPeekViewBounds = false;
 
@@ -123,6 +125,7 @@ public class PeekAndPop {
             public void onGlobalLayout() {
                 initialisePeekViewOriginalPosition();
                 initialiseMaxDrag();
+                calculateAdjust();
             }
         });
 
@@ -195,14 +198,31 @@ public class PeekAndPop {
             int touchY = (int) event.getRawY();
 
             if (hasEnteredPeekViewBounds) {
-                setOffset(touchX, touchY);
-                movePeekView(touchX, touchY);
-                if(onLongHoldListener != null)
+                updatePeekView(touchX, touchY);
+                if (onLongHoldListener != null)
                     checkLongHoldViews(touchX, touchY, position);
+
             } else if (pointInViewBounds(peekView, touchX, touchY)) {
                 hasEnteredPeekViewBounds = true;
             }
         }
+    }
+
+    private void updatePeekView(int touchX, int touchY) {
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+            if (touchY > peekViewOriginalPosition[1] + peekView.getHeight() / 3 * 2 + initialTouchOffset - adjust) {
+                peekView.setY(peekViewOriginalPosition[1]);
+                return;
+            }
+        } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (touchX > peekViewOriginalPosition[0] + peekView.getWidth() / 3 * 2 + initialTouchOffset - adjust) {
+                peekView.setX(peekViewOriginalPosition[0]);
+                return;
+            }
+        }
+
+        setOffset(touchX, touchY);
+        movePeekView(touchX, touchY);
     }
 
     private void setOffset(int x, int y) {
@@ -223,20 +243,22 @@ public class PeekAndPop {
      * @param y
      * @param position
      */
-    private void checkLongHoldViews(int x, int y, int position){
+
+    // todo change this to a timer
+    private void checkLongHoldViews(int x, int y, int position) {
         for (int i = 0; i < longHoldViews.size(); i++) {
             LongHoldView longHoldView = longHoldViews.get(i);
 
-            if(pointInViewBounds(longHoldView.getView(), x, y)){
+            if (pointInViewBounds(longHoldView.getView(), x, y)) {
                 long currentTime = System.currentTimeMillis();
-                if(longHoldView.getHoldStart() == -1){
+                if (longHoldView.getHoldStart() == -1) {
                     longHoldView.setHoldStart(currentTime);
-                } else if(longHoldView.getHoldStart() == 0){
+                } else if (longHoldView.getHoldStart() == 0) {
                     // Has already sent an event
-                } else if(currentTime - longHoldView.getHoldStart() > LONG_HOLD_DURATION) {
+                } else if (currentTime - longHoldView.getHoldStart() > LONG_HOLD_DURATION) {
                     onLongHoldListener.onLongHold(longHoldView.getView(), position);
 
-                    if(longHoldView.isReceiveMultipleEvents())
+                    if (longHoldView.isReceiveMultipleEvents())
                         longHoldView.setHoldStart(-1);
                     else
                         longHoldView.setHoldStart(0);
@@ -263,14 +285,8 @@ public class PeekAndPop {
 
     private void initialisePeekViewOriginalPosition() {
         peekViewOriginalPosition = new float[2];
-        peekViewOriginalPosition[0] = peekView.getX();
-        peekViewOriginalPosition[1] = peekView.getY();
-
-        int[] l = new int[2];
-        peekView.getLocationOnScreen(l);
-        peekViewOriginalRawPosition = new float[2];
-        peekViewOriginalRawPosition[0] = l[0];
-        peekViewOriginalRawPosition[1] = l[1];
+        peekViewOriginalPosition[0] = (peekLayout.getWidth() / 2) - (peekView.getWidth() / 2);  //peekView.getX();
+        peekViewOriginalPosition[1] = (peekLayout.getHeight() / 2) - (peekView.getHeight() / 2);//peekView.getY();
     }
 
     /**
@@ -291,11 +307,29 @@ public class PeekAndPop {
         }
     }
 
+    /**
+     * The adjust is the difference between the raw coordinates on the screen and the coordinates given by,
+     * the getX() and getY() methods provided by the peekView. This is used to "adjust" touch event values so
+     * that the align correctly with views in the peekView.
+     **/
+    private void calculateAdjust() {
+        int[] l = new int[2];
+        peekView.getLocationOnScreen(l);
+        int peekViewRawX = l[0];
+        int peekViewRawY = l[1];
+
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+            adjust = (int) peekView.getY() - peekViewRawY;
+        } else {
+            adjust = (int) peekView.getX() - peekViewRawX;
+        }
+    }
+
     private int calculateOffset(int touchX, int touchY) {
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            return touchY - (int) peekViewOriginalRawPosition[1];
+            return touchY - (int) peekViewOriginalPosition[1] + adjust;
         } else {
-            return touchX - (int) peekViewOriginalRawPosition[0];
+            return touchX - (int) peekViewOriginalPosition[0] + adjust;
         }
     }
 
@@ -303,6 +337,7 @@ public class PeekAndPop {
         if (this.onGeneralActionListener != null) {
             this.onGeneralActionListener.onPeek(longClickView, index);
         }
+
         peekLayout.setAlpha(1f);
 
         Animation peekViewAnimation = AnimationUtils.loadAnimation(builder.activity, R.anim.peek);
@@ -314,6 +349,7 @@ public class PeekAndPop {
         if (builder.parentViewGroup != null) {
             builder.parentViewGroup.requestDisallowInterceptTouchEvent(true);
         }
+
     }
 
     private void pop(View longClickView, int index) {
@@ -380,18 +416,12 @@ public class PeekAndPop {
      * @param touchY
      */
     private void movePeekView(int touchX, int touchY) {
-        int[] l = new int[2];
-        peekView.getLocationOnScreen(l);
-        int peekViewRawX = l[0];
-        int peekViewRawY = l[1];
-
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            int adjust = (int) peekView.getY() - peekViewRawY;
             float adjustedPosition = touchY + adjust - initialTouchOffset;
             float totalDistanceTravelled = 0 - (adjustedPosition - peekViewOriginalPosition[1]);
             float amountToMove = peekViewOriginalPosition[1] - (totalDistanceTravelled / 3f + (float) Math.sqrt(totalDistanceTravelled) * 4);
 
-            if (touchY > peekViewOriginalRawPosition[1] + initialTouchOffset) {
+            if (touchY > peekViewOriginalPosition[1] + initialTouchOffset - adjust) {
                 peekView.setY(peekViewOriginalPosition[1]);
             } else if (amountToMove < 0) {
                 peekView.setY(0);
@@ -399,12 +429,11 @@ public class PeekAndPop {
                 peekView.setY(amountToMove);
             }
         } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            int adjust = (int) peekView.getX() - peekViewRawX;
             float adjustedPosition = touchX + adjust - initialTouchOffset;
             float totalDistanceTravelled = 0 - (adjustedPosition - peekViewOriginalPosition[0]);
             float amountToMove = peekViewOriginalPosition[0] - (totalDistanceTravelled / 3f + (float) Math.sqrt(totalDistanceTravelled) * 4);
 
-            if (touchX > peekViewOriginalRawPosition[0] + initialTouchOffset) {
+            if (touchX > peekViewOriginalPosition[0] + initialTouchOffset - adjust) {
                 peekView.setX(peekViewOriginalPosition[0]);
             } else if (amountToMove < 0) {
                 peekView.setX(0);
@@ -489,7 +518,7 @@ public class PeekAndPop {
      * @param longHoldViewId id of the view to receive on long hold events
      * @return
      */
-    public void addLongHoldView(int longHoldViewId, boolean receiveMultipleEvents){
+    public void addLongHoldView(int longHoldViewId, boolean receiveMultipleEvents) {
         this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), -1, receiveMultipleEvents));
     }
 
