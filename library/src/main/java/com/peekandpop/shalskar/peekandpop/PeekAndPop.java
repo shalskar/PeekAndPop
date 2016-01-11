@@ -27,7 +27,8 @@ public class PeekAndPop {
 
     // These static values will be converted from dp to px
     protected static final int DRAG_AMOUNT = 96;
-    protected static final int DRAG_TO_ACTION_VIEW_MARGIN = 0;
+    protected static final int SCREEN_TOP_MARGIN = 40;
+    protected static final int DRAG_TO_ACTION_VIEW_MARGIN = 32;
     protected static final int DRAG_TO_ACTION_MOVE_AMOUNT = 128;
 
     protected static final float DRAG_TO_ACTION_START_SCALE = 0.25f;
@@ -37,6 +38,7 @@ public class PeekAndPop {
     protected static final long LONG_HOLD_VIBRATE_DURATION = 20;
 
     protected int dragAmount;
+    protected int screenTopMargin;
     protected int dragToActionThreshold;
     protected int dragToActionViewMargin;
     protected int dragToActionMoveAmount;
@@ -94,6 +96,7 @@ public class PeekAndPop {
      */
     protected void initialiseValues() {
         dragAmount = convertDpToPx(DRAG_AMOUNT);
+        screenTopMargin = convertDpToPx(SCREEN_TOP_MARGIN);
         dragToActionViewMargin = convertDpToPx(DRAG_TO_ACTION_VIEW_MARGIN);
         dragToActionMoveAmount = convertDpToPx(DRAG_TO_ACTION_MOVE_AMOUNT);
     }
@@ -107,7 +110,7 @@ public class PeekAndPop {
      */
     protected void createPeekView() {
         LayoutInflater inflater = LayoutInflater.from(builder.activity);
-        contentView = (ViewGroup) builder.activity.findViewById(android.R.id.content);
+        contentView = (ViewGroup) builder.activity.findViewById(android.R.id.content).getRootView();
 
         // Center onPeek view in the onPeek layout and add to the container view group
         peekLayout = (RelativeLayout) inflater.inflate(R.layout.peek_background, contentView, false);
@@ -116,6 +119,9 @@ public class PeekAndPop {
         RelativeLayout.LayoutParams layoutParams =
                 (RelativeLayout.LayoutParams) peekView.getLayoutParams();
         layoutParams.addRule(RelativeLayout.CENTER_IN_PARENT);
+        if(orientation == Configuration.ORIENTATION_LANDSCAPE)
+            layoutParams.topMargin = screenTopMargin;
+
         peekLayout.addView(peekView, layoutParams);
 
         contentView.addView(peekLayout);
@@ -503,8 +509,8 @@ public class PeekAndPop {
 
             if (touchY > peekViewOriginalPosition[1] + initialTouchOffset - adjust) {
                 peekView.setY(peekViewOriginalPosition[1]);
-            } else if (amountToMove < 0) {
-                peekView.setY(0);
+            } else if (amountToMove < screenTopMargin) {
+                peekView.setY(screenTopMargin);
             } else {
                 peekView.setY(amountToMove);
             }
@@ -535,7 +541,8 @@ public class PeekAndPop {
     private void transitionDragToActionView() {
         float ratio;
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            ratio = (peekViewOriginalPosition[1] - peekView.getY()) / (peekViewOriginalPosition[1] - maxDrag);
+            // todo check if screen margin is correct
+            ratio = (peekViewOriginalPosition[1] - peekView.getY()) / (peekViewOriginalPosition[1] - maxDrag - screenTopMargin/2);
             dragToActionViewLayout.setTranslationY((-ratio * ratio / 3.5f) * dragToActionMoveAmount);
         } else {
             ratio = (peekViewOriginalPosition[0] - peekView.getX()) / (peekViewOriginalPosition[0] - maxDrag);
