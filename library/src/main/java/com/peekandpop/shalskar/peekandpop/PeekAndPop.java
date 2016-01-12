@@ -7,6 +7,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Vibrator;
 import android.support.annotation.NonNull;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -357,17 +358,24 @@ public class PeekAndPop {
      */
     private void initialiseDragFields() {
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            maxDrag = (int) peekView.getY() - dragAmount;
-            dragToActionThreshold = (int) peekView.getY() / 4;
+            maxDrag = (int) peekViewOriginalPosition[1] - dragAmount;
+            dragToActionThreshold = (int) peekViewOriginalPosition[1] / 4;
+            // todo change to exception
+            if (maxDrag < screenTopMargin) {
+                Log.e("PeekAndPop", "Peek view is too large by " + ((screenTopMargin - maxDrag) * 2) + "  pixels, dragging may not work correctly.");
+                maxDrag = screenTopMargin;
+            }
         } else {
-            maxDrag = (int) peekView.getX() - dragAmount;
-            dragToActionThreshold = (int) peekView.getY() / 4;
+            maxDrag = (int) peekViewOriginalPosition[0] - dragAmount;
+            dragToActionThreshold = (int) peekViewOriginalPosition[0] / 4;
+            // todo change to exception
+            if (maxDrag < 0) {
+                Log.e("PeekAndPop", "Peek view is too large by " + (-maxDrag * 2) + "  pixels, dragging may not work correctly.");
+                maxDrag = 0;
+            }
         }
 
-        // todo change to exception
-        if (maxDrag < 0) {
-            maxDrag = 0;
-        }
+
     }
 
     /**
@@ -542,7 +550,7 @@ public class PeekAndPop {
         float ratio;
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             // todo check if screen margin is correct
-            ratio = (peekViewOriginalPosition[1] - peekView.getY()) / (peekViewOriginalPosition[1] - maxDrag - screenTopMargin/2);
+            ratio = (peekViewOriginalPosition[1] - peekView.getY()) / (peekViewOriginalPosition[1] - maxDrag);
             dragToActionViewLayout.setTranslationY((-ratio * ratio / 3.5f) * dragToActionMoveAmount);
         } else {
             ratio = (peekViewOriginalPosition[0] - peekView.getX()) / (peekViewOriginalPosition[0] - maxDrag);
