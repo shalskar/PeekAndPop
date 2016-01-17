@@ -3,6 +3,11 @@ package com.peekandpop.shalskar.peekandpop;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.LightingColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.renderscript.Allocation;
 import android.renderscript.Element;
 import android.renderscript.RenderScript;
@@ -33,7 +38,7 @@ public class BlurBuilder {
         theIntrinsic.forEach(tmpOut);
         tmpOut.copyTo(outputBitmap);
 
-        return outputBitmap;
+        return darkenBitmap(outputBitmap);
     }
 
     private static Bitmap getScreenshot(View v) {
@@ -41,5 +46,14 @@ public class BlurBuilder {
         Canvas c = new Canvas(b);
         v.draw(c);
         return b;
+    }
+
+    private static Bitmap darkenBitmap(Bitmap bitmap) {
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Color.RED);
+        ColorFilter filter = new LightingColorFilter(0xFF7F7F7F, 0x00000000);
+        paint.setColorFilter(filter);
+        canvas.drawBitmap(bitmap, new Matrix(), paint);
+        return bitmap;
     }
 }
