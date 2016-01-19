@@ -37,18 +37,18 @@ public class PeekAndPop {
     protected static final int FLING_TO_ACTION_VIEW_MARGIN = 32;
     protected static final int FLING_TO_ACTION_MOVE_AMOUNT = 128;
 
-    protected static final float DRAG_TO_ACTION_START_SCALE = 0.25f;
-
     protected static final long LONG_CLICK_DURATION = 150;
     protected static final long LONG_HOLD_DURATION = 750;
     protected static final long LONG_HOLD_REPEAT_DURATION = 1500;
     protected static final long LONG_HOLD_VIBRATE_DURATION = 20;
 
     protected static final int FLING_VELOCITY_THRESHOLD = -3000;
-    private static final float Fling_VELOCITY_MAX = -500;
+    private static final float FLING_VELOCITY_MAX = -350;
 
     protected static final int ANIMATION_PEEK_DURATION = 150;
     protected static final int ANIMATION_POP_DURATION = 150;
+    protected static final int ANIMATION_POP_BACKGROUND_DURATION = 225;
+    protected static final int ANIMATION_FLING_DURATION = 150;
 
     protected int dragAmount;
     protected int screenTopMargin;
@@ -65,6 +65,7 @@ public class PeekAndPop {
     protected View peekView;
 
     protected boolean blurBackground;
+    protected boolean animateFling;
 
     protected View flingToActionViewLayout;
 
@@ -77,6 +78,7 @@ public class PeekAndPop {
 
     protected float[] peekViewOriginalPosition;
     protected float initialTouchOffset = -1;
+    protected long popTime;
     private int adjust;
 
     protected boolean hasEnteredPeekViewBounds = false;
@@ -98,6 +100,7 @@ public class PeekAndPop {
         orientation = builder.activity.getResources().getConfiguration().orientation;
 
         this.blurBackground = builder.blurBackground;
+        this.animateFling = builder.animateFling;
 
         initialiseValues();
         createPeekView();
@@ -129,6 +132,7 @@ public class PeekAndPop {
         peekLayout = (RelativeLayout) inflater.inflate(R.layout.peek_background, contentView, false);
 
         peekView = inflater.inflate(builder.peekLayoutId, peekLayout, false);
+        peekView.setId(View.generateViewId());
         RelativeLayout.LayoutParams layoutParams =
                 (RelativeLayout.LayoutParams) peekView.getLayoutParams();
         layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
@@ -139,15 +143,6 @@ public class PeekAndPop {
         peekLayout.addView(peekView, layoutParams);
 
         contentView.addView(peekLayout);
-
-        // If lollipop or above, use elevation to bring onPeek layout to the front
-        if (Build.VERSION.SDK_INT >= 21) {
-            peekLayout.setElevation(10f);
-        } else {
-            peekLayout.bringToFront();
-            contentView.requestLayout();
-            contentView.invalidate();
-        }
         peekLayout.setAlpha(0);
 
         // Once the onPeek view has inflated fully, this will also update if the view changes in size change
@@ -166,6 +161,19 @@ public class PeekAndPop {
         if (builder.flingToActionViewLayout != -1) {
             addDragToActionLayout(inflater);
         }
+
+        // If lollipop or above, use elevation to bring onPeek layout to the front
+        if (Build.VERSION.SDK_INT >= 21) {
+            peekLayout.setElevation(10f);
+            peekView.setElevation(10f);
+        } else {
+            peekLayout.bringToFront();
+            peekView.bringToFront();
+            contentView.requestLayout();
+            contentView.invalidate();
+        }
+
+        peekLayout.requestLayout();
     }
 
     /**
@@ -181,27 +189,19 @@ public class PeekAndPop {
 
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
-            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-            layoutParams.bottomMargin = flingToActionViewMargin;
+            layoutParams.addRule(RelativeLayout.ABOVE, peekView.getId());
         } else {
             layoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
-            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-            layoutParams.rightMargin = flingToActionViewMargin;
+            layoutParams.addRule(RelativeLayout.LEFT_OF, peekView.getId());
         }
 
         peekLayout.addView(flingToActionViewLayout, layoutParams);
-        flingToActionViewLayout.setAlpha(0);
-        flingToActionViewLayout.setScaleX(DRAG_TO_ACTION_START_SCALE);
-        flingToActionViewLayout.setScaleY(DRAG_TO_ACTION_START_SCALE);
-
     }
 
     /**
      * Set an onLongClick, onClick and onTouch listener for each long click view.
      */
     protected void initialiseGestureListeners() {
-        gestureDetector = new GestureDetector(builder.activity, new GestureListener());
-        gestureDetector.setIsLongpressEnabled(false);
         for (int i = 0; i < builder.longClickViews.size(); i++) {
             initialiseGestureListener(builder.longClickViews.get(i), -1);
         }
@@ -210,6 +210,8 @@ public class PeekAndPop {
     protected void initialiseGestureListener(View view, int position) {
         //view.setOnLongClickListener(new PeekAndPopOnLongClickListener(position));
         view.setOnTouchListener(new PeekAndPopOnTouchListener(position));
+        gestureDetector = new GestureDetector(builder.activity, new GestureListener(view, position));
+        gestureDetector.setIsLongpressEnabled(false);
     }
 
     /**
@@ -224,11 +226,8 @@ public class PeekAndPop {
      */
 
     private void respondToTouch(View v, MotionEvent event, int position) {
-        //gestureDetector.onTouchEvent(event);
         if (event.getAction() == MotionEvent.ACTION_UP) {
             pop(v, position, isPastThreshold());
-            //if (onFlingToActionListener != null)
-            //checkIfDraggedToAction(v, position);
 
         } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
             downX = (int) event.getRawX();
@@ -470,17 +469,12 @@ public class PeekAndPop {
             Animation fadeOutAnimation = AnimationUtils.loadAnimation(builder.activity, R.anim.fade_out);
             flingToActionViewLayout.startAnimation(fadeOutAnimation);
         }
+        popTime = System.currentTimeMillis();
     }
 
     private void animatePop(boolean pastThreshold) {
         ObjectAnimator animatorLayoutAlpha = ObjectAnimator.ofFloat(peekLayout, "alpha", 0);
-        animatorLayoutAlpha.setDuration(ANIMATION_POP_DURATION);
-//        if (!pastThreshold) {
-//            animateReturn();
-//        } else {
-//            //animateExpand();
-//        }
-        animateReturn();
+        animatorLayoutAlpha.setDuration(ANIMATION_POP_BACKGROUND_DURATION);
         animatorLayoutAlpha.addListener(new Animator.AnimatorListener() {
             @Override
             public void onAnimationStart(Animator animation) {
@@ -503,6 +497,7 @@ public class PeekAndPop {
             }
         });
         animatorLayoutAlpha.start();
+        animateReturn();
     }
 
     private void animateReturn() {
@@ -517,22 +512,23 @@ public class PeekAndPop {
         ObjectAnimator animatorShrinkX = ObjectAnimator.ofFloat(peekView, "scaleX", 0.9f);
         animatorShrinkX.setInterpolator(new DecelerateInterpolator());
         animatorShrinkY.setInterpolator(new DecelerateInterpolator());
+        animatorTranslate.setInterpolator(new DecelerateInterpolator());
         animatorShrinkX.setDuration(ANIMATION_POP_DURATION);
         animatorShrinkY.setDuration(ANIMATION_POP_DURATION);
+        animatorTranslate.setDuration(ANIMATION_POP_DURATION);
         animatorShrinkX.start();
         animatorShrinkY.start();
-        animatorTranslate.setInterpolator(new DecelerateInterpolator());
-        animatorTranslate.setDuration(ANIMATION_POP_DURATION);
         animatorTranslate.start();
     }
 
     private void animateExpand() {
+        long timeDifference = System.currentTimeMillis() - popTime;
         ObjectAnimator animatorExpandY = ObjectAnimator.ofFloat(peekView, "scaleY", 1.025f);
         ObjectAnimator animatorExpandX = ObjectAnimator.ofFloat(peekView, "scaleX", 1.025f);
         animatorExpandX.setInterpolator(new DecelerateInterpolator());
         animatorExpandY.setInterpolator(new DecelerateInterpolator());
-        animatorExpandX.setDuration(ANIMATION_POP_DURATION);
-        animatorExpandY.setDuration(ANIMATION_POP_DURATION);
+        animatorExpandX.setDuration(ANIMATION_FLING_DURATION - timeDifference);
+        animatorExpandY.setDuration(ANIMATION_FLING_DURATION - timeDifference);
         animatorExpandX.start();
         animatorExpandY.start();
     }
@@ -548,9 +544,10 @@ public class PeekAndPop {
 
         if (flingToActionViewLayout != null) {
             flingToActionViewLayout.setTranslationY(0);
-            flingToActionViewLayout.setScaleX(DRAG_TO_ACTION_START_SCALE);
-            flingToActionViewLayout.setScaleY(DRAG_TO_ACTION_START_SCALE);
-            flingToActionViewLayout.setAlpha(0);
+            flingToActionViewLayout.setTranslationX(0);
+            flingToActionViewLayout.setScaleX(1f);
+            flingToActionViewLayout.setScaleY(1f);
+            flingToActionViewLayout.setAlpha(1);
         }
 
         for (int i = 0; i < longHoldViews.size(); i++) {
@@ -601,7 +598,7 @@ public class PeekAndPop {
 
         // If there is a flingToActionViewLayout, transition it
         if (flingToActionViewLayout != null) {
-            //transitionDragToActionView();
+            transitionDragToActionView();
         }
     }
 
@@ -614,17 +611,19 @@ public class PeekAndPop {
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             // todo check if screen margin is correct
             ratio = (peekViewOriginalPosition[1] - peekView.getY()) / (peekViewOriginalPosition[1] - maxDrag - screenTopMargin / 2);
-            flingToActionViewLayout.setTranslationY((-ratio * ratio / 3.5f) * flingToActionMoveAmount);
+            //flingToActionViewLayout.setTranslationY((-ratio * ratio / 3.5f) * flingToActionMoveAmount);
         } else {
             ratio = (peekViewOriginalPosition[0] - peekView.getX()) / (peekViewOriginalPosition[0] - maxDrag);
-            flingToActionViewLayout.setTranslationX((-ratio * ratio / 3.5f) * flingToActionMoveAmount);
+            //flingToActionViewLayout.setTranslationX((-ratio * ratio / 3.5f) * flingToActionMoveAmount);
         }
 
-        ratio = Math.min(1f, ratio - 0.25f);
+//        ratio = Math.min(1f, ratio - 0.25f);
+        ratio = ratio * 2;
+        ratio = (1- ratio);
 
-        flingToActionViewLayout.setScaleX(Math.min(1f, 0.25f + ratio));
-        flingToActionViewLayout.setScaleY(Math.min(1f, 0.25f + ratio));
-        flingToActionViewLayout.setAlpha(ratio * 2);
+        flingToActionViewLayout.setScaleX(Math.min(ratio, 1));
+        flingToActionViewLayout.setScaleY(Math.min(ratio, 1));
+        flingToActionViewLayout.setAlpha(ratio);
     }
 
     private int convertDpToPx(int dp) {
@@ -683,6 +682,22 @@ public class PeekAndPop {
         return peekView;
     }
 
+    public boolean isBlurBackground() {
+        return blurBackground;
+    }
+
+    public void setBlurBackground(boolean blurBackground) {
+        this.blurBackground = blurBackground;
+    }
+
+    public boolean isAnimateFling() {
+        return animateFling;
+    }
+
+    public void setAnimateFling(boolean animateFling) {
+        this.animateFling = animateFling;
+    }
+
     /**
      * Builder class used for creating the PeekAndPop view.
      */
@@ -697,10 +712,13 @@ public class PeekAndPop {
         protected ViewGroup parentViewGroup;
         protected ArrayList<View> longClickViews;
         protected int flingToActionViewLayout = -1;
+
         protected OnFlingToActionListener onFlingToActionListener;
         protected OnGeneralActionListener onGeneralActionListener;
         protected OnLongHoldListener onLongHoldListener;
+
         protected boolean blurBackground = true;
+        protected boolean animateFling = true;
 
         public Builder(@NonNull Activity activity) {
             this.activity = activity;
@@ -803,6 +821,17 @@ public class PeekAndPop {
         }
 
         /**
+         * Animate the peek view upwards when a it is flung, defaults to true.
+         *
+         * @param animateFling
+         * @return
+         */
+        public Builder animateFling(boolean animateFling) {
+            this.animateFling = animateFling;
+            return this;
+        }
+
+        /**
          * Create the PeekAndPop object
          *
          * @return the PeekAndPop object
@@ -813,7 +842,7 @@ public class PeekAndPop {
 
     }
 
-    public class PeekAndPopOnTouchListener implements View.OnTouchListener {
+    private final class PeekAndPopOnTouchListener implements View.OnTouchListener {
 
         private int position;
         private Timer longHoldTimer;
@@ -847,21 +876,15 @@ public class PeekAndPop {
         }
     }
 
-    public interface OnFlingToActionListener {
-        public void onFlingToAction(View longClickView, int position);
-    }
-
-    public interface OnGeneralActionListener {
-        public void onPeek(View longClickView, int position);
-
-        public void onPop(View longClickView, int position);
-    }
-
-    public interface OnLongHoldListener {
-        public void onLongHold(View view, int position);
-    }
-
     private final class GestureListener extends GestureDetector.SimpleOnGestureListener {
+
+        private View view;
+        private int position;
+
+        public GestureListener(View view, int position) {
+            this.view = view;
+            this.position = position;
+        }
 
         @Override
         public boolean onDown(MotionEvent e) {
@@ -872,31 +895,63 @@ public class PeekAndPop {
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             Log.d("PeekAndPop", "Fling");
-            animateFling(velocityX, velocityY);
-            animateExpand();
+            if(animateFling) {
+                animateFling(velocityX, velocityY);
+                animateExpand();
+            }
+            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                if (velocityY < FLING_VELOCITY_THRESHOLD) {
+                    onFlingToActionListener.onFlingToAction(view, position);
+                }
+            } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                if (velocityX < FLING_VELOCITY_THRESHOLD) {
+                    onFlingToActionListener.onFlingToAction(view, position);
+                }
+            }
+
 
             return true;
         }
 
         public void animateFling(float velocityX, float velocityY){
+            long timeDifference = System.currentTimeMillis() - popTime;
             if (orientation == Configuration.ORIENTATION_PORTRAIT) {
                 if (velocityY < FLING_VELOCITY_THRESHOLD) {
-                    float translationAmount = Math.max(velocityY / 10, Fling_VELOCITY_MAX);
+                    float translationAmount = Math.max(velocityY / 16, FLING_VELOCITY_MAX);
                     ObjectAnimator animatorTranslateY = ObjectAnimator.ofFloat(peekView, "translationY", translationAmount);
                     animatorTranslateY.setInterpolator(new DecelerateInterpolator());
-                    animatorTranslateY.setDuration(ANIMATION_POP_DURATION);
+                    animatorTranslateY.setDuration(ANIMATION_FLING_DURATION - timeDifference);
                     animatorTranslateY.start();
+                    flingToActionViewLayout.animate().setDuration(ANIMATION_FLING_DURATION / 2).alpha(0).translationY(translationAmount / 4)
+                            .setInterpolator(new DecelerateInterpolator()).start();
                 }
             } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
                 if (velocityX < FLING_VELOCITY_THRESHOLD) {
-                    float translationAmount = Math.max(velocityX / 10, Fling_VELOCITY_MAX);
+                    float translationAmount = Math.max(velocityX / 16, FLING_VELOCITY_MAX);
                     ObjectAnimator animatorTranslateX = ObjectAnimator.ofFloat(peekView, "translationX", translationAmount);
                     animatorTranslateX.setInterpolator(new DecelerateInterpolator());
-                    animatorTranslateX.setDuration(ANIMATION_POP_DURATION);
+                    animatorTranslateX.setDuration(ANIMATION_FLING_DURATION - timeDifference);
                     animatorTranslateX.start();
+                    flingToActionViewLayout.animate().setDuration(ANIMATION_FLING_DURATION / 2).alpha(0).translationX(translationAmount / 4)
+                            .setInterpolator(new DecelerateInterpolator()).start();
                 }
             }
         }
+
+    }
+
+    public interface OnFlingToActionListener {
+        void onFlingToAction(View longClickView, int position);
+    }
+
+    public interface OnGeneralActionListener {
+        void onPeek(View longClickView, int position);
+
+        void onPop(View longClickView, int position);
+    }
+
+    public interface OnLongHoldListener {
+        void onLongHold(View view, int position);
     }
 
 }
