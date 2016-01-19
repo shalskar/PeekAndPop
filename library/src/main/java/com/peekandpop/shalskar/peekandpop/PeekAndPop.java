@@ -527,8 +527,8 @@ public class PeekAndPop {
     }
 
     private void animateExpand() {
-        ObjectAnimator animatorExpandY = ObjectAnimator.ofFloat(peekView, "scaleY", 1.05f);
-        ObjectAnimator animatorExpandX = ObjectAnimator.ofFloat(peekView, "scaleX", 1.05f);
+        ObjectAnimator animatorExpandY = ObjectAnimator.ofFloat(peekView, "scaleY", 1.025f);
+        ObjectAnimator animatorExpandX = ObjectAnimator.ofFloat(peekView, "scaleX", 1.025f);
         animatorExpandX.setInterpolator(new DecelerateInterpolator());
         animatorExpandY.setInterpolator(new DecelerateInterpolator());
         animatorExpandX.setDuration(ANIMATION_POP_DURATION);
@@ -873,7 +873,7 @@ public class PeekAndPop {
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             Log.d("PeekAndPop", "Fling");
             animateFling(velocityX, velocityY);
-            //animateExpand();
+            animateExpand();
 
             return true;
         }
