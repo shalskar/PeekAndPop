@@ -12,11 +12,12 @@ import android.renderscript.Allocation;
 import android.renderscript.Element;
 import android.renderscript.RenderScript;
 import android.renderscript.ScriptIntrinsicBlur;
+import android.util.Log;
 import android.view.View;
 
 public class BlurBuilder {
-    private static final float BITMAP_SCALE = 0.5f;
-    private static final float BLUR_RADIUS = 12.5f;
+    private static final float BITMAP_SCALE = 0.2f;
+    private static final float BLUR_RADIUS = 6.0f;
 
     public static Bitmap blur(View v) {
         return blur(v.getContext(), getScreenshot(v));
@@ -51,7 +52,7 @@ public class BlurBuilder {
     private static Bitmap darkenBitmap(Bitmap bitmap) {
         Canvas canvas = new Canvas(bitmap);
         Paint paint = new Paint(Color.BLACK);
-        ColorFilter filter = new LightingColorFilter(0x888888, 0x000000);
+        ColorFilter filter = new LightingColorFilter(0xAAAAAA, 0x000000);
         paint.setColorFilter(filter);
         canvas.drawBitmap(bitmap, new Matrix(), paint);
         return bitmap;
