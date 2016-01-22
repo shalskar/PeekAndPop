@@ -793,13 +793,15 @@ public class PeekAndPop {
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-                if (velocityY < FLING_VELOCITY_THRESHOLD) {
-                    onFlingToActionListener.onFlingToAction(view, position);
-                }
-            } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                if (velocityX < FLING_VELOCITY_THRESHOLD) {
-                    onFlingToActionListener.onFlingToAction(view, position);
+            if(onFlingToActionListener != null) {
+                if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                    if (velocityY < FLING_VELOCITY_THRESHOLD) {
+                        onFlingToActionListener.onFlingToAction(view, position);
+                    }
+                } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    if (velocityX < FLING_VELOCITY_THRESHOLD) {
+                        onFlingToActionListener.onFlingToAction(view, position);
+                    }
                 }
             }
             Log.d("PeekAndPop", "Fling");
