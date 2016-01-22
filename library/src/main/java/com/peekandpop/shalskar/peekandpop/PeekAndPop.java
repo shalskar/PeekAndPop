@@ -214,7 +214,7 @@ public class PeekAndPop {
      */
 
     private void respondToTouch(View v, MotionEvent event, int position) {
-        if (event.getAction() == MotionEvent.ACTION_UP) {
+        if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
             pop(v, position);
 
         } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
