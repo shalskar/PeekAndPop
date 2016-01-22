@@ -88,7 +88,7 @@ public class PeekAndPop {
         this.onGeneralActionListener = builder.onGeneralActionListener;
         this.onLongHoldListener = builder.onLongHoldListener;
         this.gestureListener = new GestureListener();
-        this.gestureDetector = new GestureDetector(builder.activity, null);
+        this.gestureDetector = new GestureDetector(builder.activity, this.gestureListener);
         this.animateFling = this.onFlingToActionListener != null;
 
         this.longHoldViews = new ArrayList<>();
