@@ -89,14 +89,13 @@ public class PeekAndPop {
         this.onLongHoldListener = builder.onLongHoldListener;
         this.gestureListener = new GestureListener();
         this.gestureDetector = new GestureDetector(builder.activity, this.gestureListener);
-        this.animateFling = this.onFlingToActionListener != null;
+        this.animateFling = this.onFlingToActionListener != null && builder.animateFling;
 
         this.longHoldViews = new ArrayList<>();
 
         orientation = builder.activity.getResources().getConfiguration().orientation;
 
         this.blurBackground = builder.blurBackground;
-        this.animateFling = builder.animateFling;
 
         initialiseValues();
         createPeekView();
@@ -168,6 +167,7 @@ public class PeekAndPop {
         }
 
         peekLayout.requestLayout();
+        resetViews();
     }
 
     /**
@@ -624,7 +624,7 @@ public class PeekAndPop {
         protected OnLongHoldListener onLongHoldListener;
 
         protected boolean blurBackground = true;
-        protected boolean animateFling;
+        protected boolean animateFling = true;
 
         public Builder(@NonNull Activity activity) {
             this.activity = activity;
