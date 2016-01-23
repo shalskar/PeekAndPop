@@ -146,8 +146,8 @@ public class PeekAndPop {
                 initialisePeekViewOriginalPosition();
                 if (onFlingToActionListener != null) {
                     initialiseDragFields();
-                    initialTouchOffset = -1;
                 }
+                resetViews();
             }
         });
 
@@ -167,7 +167,6 @@ public class PeekAndPop {
         }
 
         peekLayout.requestLayout();
-        resetViews();
     }
 
     /**
