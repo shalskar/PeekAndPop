@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.content.res.Configuration;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
-import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.TypedValue;
@@ -32,8 +31,6 @@ public class PeekAndPop {
 
     protected static final long LONG_CLICK_DURATION = 200;
     protected static final long LONG_HOLD_DURATION = 750;
-    protected static final long LONG_HOLD_REPEAT_DURATION = 1000;
-    protected static final long LONG_HOLD_VIBRATE_DURATION = 20;
 
     protected static final int FLING_VELOCITY_THRESHOLD = -3000;
     private static final float FLING_VELOCITY_MAX = -350;
@@ -54,6 +51,7 @@ public class PeekAndPop {
 
     protected boolean blurBackground;
     protected boolean animateFling;
+    private int customLongHoldDuration = -1;
 
     protected View flingToActionViewLayout;
 
@@ -111,7 +109,7 @@ public class PeekAndPop {
      * bring it to the front and set the peekLayout to have an alpha of 0. Get the peekView's
      * original Y position for use when dragging.
      * <p/>
-     * If a flingToActionViewLayout is supplied, inflate the flingToActionViewLayout.
+     * If a flingToActionViewLayoutId is supplied, inflate the flingToActionViewLayoutId.
      */
     protected void createPeekView() {
         LayoutInflater inflater = LayoutInflater.from(builder.activity);
@@ -142,7 +140,7 @@ public class PeekAndPop {
             }
         });
 
-        if (builder.flingToActionViewLayout != -1) {
+        if (builder.flingToActionViewLayoutId != -1) {
             addFlingToActionLayout(inflater);
         }
 
@@ -157,20 +155,20 @@ public class PeekAndPop {
             contentView.invalidate();
         }
 
-        this.peekAnimationHelper = new PeekAnimationHelper(builder.activity.getApplicationContext(), flingToActionViewLayout, peekLayout, peekView);
+        peekAnimationHelper = new PeekAnimationHelper(builder.activity.getApplicationContext(), flingToActionViewLayout, peekLayout, peekView);
 
         peekLayout.requestLayout();
         resetViews();
     }
 
     /**
-     * Adds a flingToActionViewLayout centered at the bottom of the screen.
+     * Adds a flingToActionViewLayoutId centered at the bottom of the screen.
      * Also inflates the dragToActionView and revealView if applicable.
      *
      * @param inflater
      */
     private void addFlingToActionLayout(LayoutInflater inflater) {
-        flingToActionViewLayout = inflater.inflate(builder.flingToActionViewLayout, peekLayout, false);
+        flingToActionViewLayout = inflater.inflate(builder.flingToActionViewLayoutId, peekLayout, false);
         RelativeLayout.LayoutParams layoutParams =
                 (RelativeLayout.LayoutParams) flingToActionViewLayout.getLayoutParams();
 
@@ -279,7 +277,8 @@ public class PeekAndPop {
             boolean viewInBounds = pointInViewBounds(longHoldView.getView(), downX, downY);
 
             if (viewInBounds && longHoldView.getLongHoldTimer() == null) {
-                setLongHoldViewTimer(longHoldView, position, LONG_HOLD_DURATION);
+                long duration = customLongHoldDuration != -1 ? customLongHoldDuration : LONG_HOLD_DURATION;
+                setLongHoldViewTimer(longHoldView, position, duration);
             } else if (!viewInBounds && longHoldView.getLongHoldTimer() != null) {
                 longHoldView.getLongHoldTimer().cancel();
                 longHoldView.setLongHoldTimer(null);
@@ -301,8 +300,11 @@ public class PeekAndPop {
             @Override
             public void run() {
                 sendOnLongHoldEvent(longHoldView.getView(), position);
-                if (longHoldView.isReceiveMultipleEvents())
-                    setLongHoldViewTimer(longHoldView, position, LONG_HOLD_REPEAT_DURATION);
+                if (longHoldView.isReceiveMultipleEvents()) {
+                    long duration = customLongHoldDuration != -1 ? customLongHoldDuration : LONG_HOLD_DURATION;
+                    duration = (long)(duration * 1.5);
+                    setLongHoldViewTimer(longHoldView, position, duration);
+                }
             }
         }, duration);
 
@@ -313,7 +315,6 @@ public class PeekAndPop {
         builder.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                ((Vibrator) builder.activity.getSystemService(Activity.VIBRATOR_SERVICE)).vibrate(LONG_HOLD_VIBRATE_DURATION);
                 onLongHoldListener.onLongHold(view, position);
             }
         });
@@ -353,8 +354,8 @@ public class PeekAndPop {
      * @param index         the view that long clicked
      */
     private void peek(View longClickView, int index) {
-        if (this.onGeneralActionListener != null) {
-            this.onGeneralActionListener.onPeek(longClickView, index);
+        if (onGeneralActionListener != null) {
+            onGeneralActionListener.onPeek(longClickView, index);
         }
 
         peekLayout.setVisibility(View.VISIBLE);
@@ -491,7 +492,7 @@ public class PeekAndPop {
     }
 
     /**
-     * Fades, moves and scales the flingToActionViewLayout in based on the peekView's
+     * Fades, moves and scales the flingToActionViewLayoutId in based on the peekView's
      * current position.
      **/
     private void transitionFlingToActionView() {
@@ -584,6 +585,10 @@ public class PeekAndPop {
         this.animateFling = animateFling;
     }
 
+    public void setLongHoldDuration(int duration){
+        this.customLongHoldDuration = duration;
+    }
+
     /**
      * Builder class used for creating the PeekAndPop view.
      */
@@ -592,12 +597,12 @@ public class PeekAndPop {
 
         // essentials
         protected final Activity activity;
-        protected int peekLayoutId;
+        protected int peekLayoutId = -1;
 
         // optional extras
         protected ViewGroup parentViewGroup;
         protected ArrayList<View> longClickViews;
-        protected int flingToActionViewLayout = -1;
+        protected int flingToActionViewLayoutId = -1;
 
         protected OnFlingToActionListener onFlingToActionListener;
         protected OnGeneralActionListener onGeneralActionListener;
@@ -643,7 +648,7 @@ public class PeekAndPop {
          * @return
          */
         public Builder flingToActionViewLayout(int flingToActionViewLayout) {
-            this.flingToActionViewLayout = flingToActionViewLayout;
+            this.flingToActionViewLayoutId = flingToActionViewLayout;
             return this;
         }
 
@@ -723,6 +728,9 @@ public class PeekAndPop {
          * @return the PeekAndPop object
          */
         public PeekAndPop build() {
+            if(peekLayoutId == -1){
+                throw new IllegalArgumentException("No peekLayoutId specified.");
+            }
             return new PeekAndPop(this);
         }
 
@@ -805,7 +813,6 @@ public class PeekAndPop {
                     peekAnimationHelper.animateExpand(ANIMATION_POP_DURATION, popTime);
                 }
             }
-
 
             return true;
         }
