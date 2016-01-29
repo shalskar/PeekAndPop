@@ -5,9 +5,12 @@ import android.app.Activity;
 import android.content.res.Configuration;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
+import android.support.annotation.IdRes;
+import android.support.annotation.IntDef;
+import android.support.annotation.LayoutRes;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -25,56 +28,56 @@ import java.util.TimerTask;
 
 public class PeekAndPop {
 
+    @IntDef({FLING_UPWARDS, FLING_DOWNWARDS})
+    public @interface FlingDirections {
+    }
+
+    public static final int FLING_UPWARDS = 0;
+    public static final int FLING_DOWNWARDS = 1;
+
     // These static values will be converted from dp to px
     protected static final int PEEK_VIEW_MARGIN = 40;
-    protected static final int FLING_TO_ACTION_VIEW_MARGIN = 32;
-    protected static final int FLING_TO_ACTION_MOVE_AMOUNT = 48;
 
     protected static final long LONG_CLICK_DURATION = 200;
     protected static final long LONG_HOLD_DURATION = 750;
-    protected static final long HOLD_AND_RELEASE_DURATION = 150;
+    protected static final long HOLD_AND_RELEASE_DURATION = 100;
 
-    protected static final int FLING_VELOCITY_THRESHOLD = -3000;
-    private static final float FLING_VELOCITY_MAX = -350;
+    protected static final int FLING_VELOCITY_THRESHOLD = 3000;
+    private static final float FLING_VELOCITY_MAX = 1000;
 
     protected static final int ANIMATION_PEEK_DURATION = 300;
     protected static final int ANIMATION_POP_DURATION = 200;
 
-    protected int peekViewMargin;
-    protected int flingToActionViewMargin;
-    protected int flingToActionMoveAmount;
-    protected int downX, downY;
-
     protected Builder builder;
+    protected View peekView;
     protected ViewGroup contentView;
     protected ViewGroup peekLayout;
-    protected View peekView;
+    protected View flingToActionViewLayout;
     protected PeekAnimationHelper peekAnimationHelper;
 
     protected boolean blurBackground;
     protected boolean animateFling;
+    protected boolean allowUpwardsFling;
+    protected boolean allowDownwardsFling;
     private int customLongHoldDuration = -1;
-
-    protected View flingToActionViewLayout;
 
     protected ArrayList<LongHoldView> longHoldViews;
     protected ArrayList<HoldAndReleaseView> holdAndReleaseViews;
     protected HoldAndReleaseView currentHoldAndReleaseView;
-
     protected OnFlingToActionListener onFlingToActionListener;
+
     protected OnGeneralActionListener onGeneralActionListener;
     protected OnLongHoldListener onLongHoldListener;
     protected OnHoldAndReleaseListener onHoldAndReleaseListener;
     protected GestureListener gestureListener;
     protected GestureDetector gestureDetector;
 
+    protected int orientation;
     protected float[] peekViewOriginalPosition;
-    protected float initialTouchOffset = -1;
+    protected int peekViewMargin;
+    protected int downX, downY;
     protected long popTime;
 
-    protected boolean hasEnteredPeekViewBounds = false;
-
-    protected int orientation;
 
     public PeekAndPop(Builder builder) {
         this.builder = builder;
@@ -88,37 +91,30 @@ public class PeekAndPop {
         this.onHoldAndReleaseListener = builder.onHoldAndReleaseListener;
         this.gestureListener = new GestureListener();
         this.gestureDetector = new GestureDetector(builder.activity, this.gestureListener);
-        this.animateFling = builder.animateFling;
+        initialiseGestureListeners();
 
         this.longHoldViews = new ArrayList<>();
         this.holdAndReleaseViews = new ArrayList<>();
 
-        orientation = builder.activity.getResources().getConfiguration().orientation;
-
         this.blurBackground = builder.blurBackground;
+        this.animateFling = builder.animateFling;
+        this.allowUpwardsFling = builder.allowUpwardsFling;
+        this.allowDownwardsFling = builder.allowDownwardsFling;
 
-        initialiseValues();
-        createPeekView();
-        initialiseGestureListeners();
-    }
+        this.orientation = builder.activity.getResources().getConfiguration().orientation;
+        this.peekViewMargin = DimensionUtil.convertDpToPx(builder.activity.getApplicationContext(), PEEK_VIEW_MARGIN);
 
-    /**
-     * Initialise all static values, converting them from dp to px.
-     */
-    protected void initialiseValues() {
-        peekViewMargin = convertDpToPx(PEEK_VIEW_MARGIN);
-        flingToActionViewMargin = convertDpToPx(FLING_TO_ACTION_VIEW_MARGIN);
-        flingToActionMoveAmount = convertDpToPx(FLING_TO_ACTION_MOVE_AMOUNT);
+        initialisePeekView();
     }
 
     /**
      * Inflate the peekView, add it to the peekLayout with a shaded/blurred background,
      * bring it to the front and set the peekLayout to have an alpha of 0. Get the peekView's
      * original Y position for use when dragging.
-     * <p>
+     * <p/>
      * If a flingToActionViewLayoutId is supplied, inflate the flingToActionViewLayoutId.
      */
-    protected void createPeekView() {
+    protected void initialisePeekView() {
         LayoutInflater inflater = LayoutInflater.from(builder.activity);
         contentView = (ViewGroup) builder.activity.findViewById(android.R.id.content).getRootView();
 
@@ -127,8 +123,7 @@ public class PeekAndPop {
 
         peekView = inflater.inflate(builder.peekLayoutId, peekLayout, false);
         peekView.setId(R.id.peek_view);
-        RelativeLayout.LayoutParams layoutParams =
-                (RelativeLayout.LayoutParams) peekView.getLayoutParams();
+        RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) peekView.getLayoutParams();
         layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
         layoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
         if (orientation == Configuration.ORIENTATION_LANDSCAPE)
@@ -139,19 +134,20 @@ public class PeekAndPop {
         peekLayout.setVisibility(View.GONE);
         peekLayout.setAlpha(0);
 
-        // Once the onPeek view has inflated fully, this will also update if the view changes in size change
-        peekView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                initialisePeekViewOriginalPosition();
-            }
-        });
 
-        if (builder.flingToActionViewLayoutId != -1) {
+        if (builder.flingToActionViewLayoutId != -1)
             addFlingToActionLayout(inflater);
-        }
 
-        // If lollipop or above, use elevation to bring peek layout to the front
+        peekAnimationHelper = new PeekAnimationHelper(builder.activity.getApplicationContext(), flingToActionViewLayout, peekLayout, peekView);
+
+        peekLayout.requestLayout();
+        bringViewsToFront();
+        initialiseViewTreeObserver();
+        resetViews();
+    }
+
+    private void bringViewsToFront() {
+        // If lollipop or above, use elevation to bring peek views to the front
         if (Build.VERSION.SDK_INT >= 21) {
             peekLayout.setElevation(10f);
             peekView.setElevation(10f);
@@ -161,11 +157,18 @@ public class PeekAndPop {
             contentView.requestLayout();
             contentView.invalidate();
         }
+    }
 
-        peekAnimationHelper = new PeekAnimationHelper(builder.activity.getApplicationContext(), flingToActionViewLayout, peekLayout, peekView);
-
-        peekLayout.requestLayout();
-        resetViews();
+    /**
+     * Once the onPeek view has inflated fully, this will also update if the view changes in size change
+     */
+    private void initialiseViewTreeObserver() {
+        peekView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                initialisePeekViewOriginalPosition();
+            }
+        });
     }
 
     /**
@@ -174,10 +177,9 @@ public class PeekAndPop {
      *
      * @param inflater
      */
-    private void addFlingToActionLayout(LayoutInflater inflater) {
+    private void addFlingToActionLayout(@NonNull LayoutInflater inflater) {
         flingToActionViewLayout = inflater.inflate(builder.flingToActionViewLayoutId, peekLayout, false);
-        RelativeLayout.LayoutParams layoutParams =
-                (RelativeLayout.LayoutParams) flingToActionViewLayout.getLayoutParams();
+        RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) flingToActionViewLayout.getLayoutParams();
 
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
@@ -199,37 +201,28 @@ public class PeekAndPop {
         }
     }
 
-    protected void initialiseGestureListener(View view, int position) {
+    protected void initialiseGestureListener(@NonNull View view, int position) {
         view.setOnTouchListener(new PeekAndPopOnTouchListener(position));
         gestureDetector.setIsLongpressEnabled(false);
     }
 
     /**
      * Check if user has moved or lifted their finger.
-     * <p>
+     * <p/>
      * If lifted, onPop the view and check if their is a drag to action listener, check
      * if it had been dragged enough and send an event if so.
-     * <p>
+     * <p/>
      * If moved, check if the user has entered the bounds of the onPeek view.
      * If the user is within the bounds, and is at the edges of the view, then
      * move it appropriately.
      */
 
-    private void respondToTouch(View v, MotionEvent event, int position) {
+    private void handleTouch(@NonNull View view, @NonNull MotionEvent event, int position) {
         if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-            pop(v, position);
-
+            pop(view, position);
         } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
             downX = (int) event.getRawX();
             downY = (int) event.getRawY();
-
-            if (onFlingToActionListener != null) {
-                if (hasEnteredPeekViewBounds) {
-                    updatePeekView();
-                } else if (pointInViewBounds(peekView, downX, downY)) {
-                    hasEnteredPeekViewBounds = true;
-                }
-            }
 
             if (onLongHoldListener != null)
                 checkLongHoldViews(position);
@@ -243,52 +236,19 @@ public class PeekAndPop {
     }
 
     /**
-     * Update the peek view's position if it is in the top 2 thirds of the peek view.
-     */
-    private void updatePeekView() {
-        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            if (downY > peekViewOriginalPosition[1] + (peekView.getHeight() / 2)) {
-                peekView.setY(peekViewOriginalPosition[1]);
-                return;
-            }
-        } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            if (downX > peekViewOriginalPosition[0] + (peekView.getWidth() / 2)) {
-                peekView.setX(peekViewOriginalPosition[0]);
-                return;
-            }
-        }
-
-        setOffset();
-        movePeekView();
-    }
-
-    /**
-     * Set the offset if the touch coordinates are in the top half of the view.
-     */
-    private void setOffset() {
-        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            if (initialTouchOffset < peekView.getHeight() / 2)
-                initialTouchOffset = Math.max(calculateOffset(downX, downY), initialTouchOffset);
-        } else {
-            if (initialTouchOffset < peekView.getWidth() / 2)
-                initialTouchOffset = Math.max(calculateOffset(downX, downY), initialTouchOffset);
-        }
-    }
-
-    /**
      * Check all the long hold views to see if they are being held and if so for how long
-     * they have been held and send a long hold event if > 750ms.
+     * they have been held and send a long hold event if over the long hold duration.
      *
      * @param position
      */
     private void checkLongHoldViews(final int position) {
         for (int i = 0; i < longHoldViews.size(); i++) {
             final LongHoldView longHoldView = longHoldViews.get(i);
-            boolean viewInBounds = pointInViewBounds(longHoldView.getView(), downX, downY);
+            boolean viewInBounds = DimensionUtil.pointInViewBounds(longHoldView.getView(), downX, downY);
 
             if (viewInBounds && longHoldView.getLongHoldTimer() == null) {
                 long duration = customLongHoldDuration != -1 ? customLongHoldDuration : LONG_HOLD_DURATION;
-                setLongHoldViewTimer(longHoldView, position, duration);
+                longHoldView.startLongHoldViewTimer(this, position, duration);
             } else if (!viewInBounds && longHoldView.getLongHoldTimer() != null) {
                 longHoldView.getLongHoldTimer().cancel();
                 longHoldView.setLongHoldTimer(null);
@@ -296,48 +256,23 @@ public class PeekAndPop {
         }
     }
 
-    /**
-     * Sets a timer on the long hold view that will send a long hold event after 750ms
-     * If receiveMultipleEvents is true, it will set another timer directly after for 1500ms
-     *
-     * @param longHoldView
-     * @param position
-     * @param duration
-     */
-    private void setLongHoldViewTimer(final LongHoldView longHoldView, final int position, long duration) {
-        final Timer longHoldTimer = new Timer();
-        longHoldTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                sendOnLongHoldEvent(longHoldView.getView(), position);
-                if (longHoldView.isReceiveMultipleEvents()) {
-                    long duration = customLongHoldDuration != -1 ? customLongHoldDuration : LONG_HOLD_DURATION;
-                    duration = (long) (duration * 1.5);
-                    setLongHoldViewTimer(longHoldView, position, duration);
-                }
-            }
-        }, duration);
-
-        longHoldView.setLongHoldTimer(longHoldTimer);
-    }
-
 
     /**
-     * Check all the long hold views to see if they are being held and if so for how long
-     * they have been held and send a long hold event if > 750ms.
+     * Check all the HoldAndRelease views to see if they are being held and if so for how long
+     * they have been held. If > 100ms then set that HoldAndReleaseView as the current.
      *
      * @param position
      */
     private void checkHoldAndReleaseViews(final int position) {
         for (int i = 0; i < holdAndReleaseViews.size(); i++) {
             final HoldAndReleaseView holdAndReleaseView = holdAndReleaseViews.get(i);
-            boolean viewInBounds = pointInViewBounds(holdAndReleaseView.getView(), downX, downY);
+            boolean viewInBounds = DimensionUtil.pointInViewBounds(holdAndReleaseView.getView(), downX, downY);
 
-            if (viewInBounds && holdAndReleaseView.getLongHoldTimer() == null) {
-                setHoldAndReleaseViewTimer(holdAndReleaseView, position, HOLD_AND_RELEASE_DURATION);
-            } else if (!viewInBounds && holdAndReleaseView.getLongHoldTimer() != null) {
-                holdAndReleaseView.getLongHoldTimer().cancel();
-                holdAndReleaseView.setLongHoldTimer(null);
+            if (viewInBounds && holdAndReleaseView.getHoldAndReleaseTimer() == null) {
+                holdAndReleaseView.startHoldAndReleaseTimer(this, position, HOLD_AND_RELEASE_DURATION);
+            } else if (!viewInBounds && holdAndReleaseView.getHoldAndReleaseTimer() != null) {
+                holdAndReleaseView.getHoldAndReleaseTimer().cancel();
+                holdAndReleaseView.setHoldAndReleaseTimer(null);
                 if (holdAndReleaseView == currentHoldAndReleaseView) {
                     holdAndReleaseView.setPosition(-1);
                     currentHoldAndReleaseView = null;
@@ -346,34 +281,14 @@ public class PeekAndPop {
         }
     }
 
-    private void sendOnLongHoldEvent(final View view, final int position) {
+    public void sendOnLongHoldEvent(final View view, final int position) {
         builder.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 onLongHoldListener.onLongHold(view, position);
             }
         });
-
     }
-
-    /**
-     * @param holdAndReleaseView
-     * @param position
-     * @param duration
-     */
-    private void setHoldAndReleaseViewTimer(final HoldAndReleaseView holdAndReleaseView, final int position, long duration) {
-        final Timer longHoldTimer = new Timer();
-        longHoldTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                currentHoldAndReleaseView = holdAndReleaseView;
-                currentHoldAndReleaseView.setPosition(position);
-            }
-        }, duration);
-
-        holdAndReleaseView.setLongHoldTimer(longHoldTimer);
-    }
-
 
     /**
      * Initialise the peek view original position to be centred in the middle of the screen.
@@ -385,32 +300,14 @@ public class PeekAndPop {
     }
 
     /**
-     * Calculate the distance of touch coordinates to the peek view's
-     * original position. This is used to make peek view track the finger
-     * accurately.
-     *
-     * @param touchX
-     * @param touchY
-     * @return
-     */
-    private int calculateOffset(int touchX, int touchY) {
-        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            return touchY - (int) peekViewOriginalPosition[1];
-        } else {
-            return touchX - (int) peekViewOriginalPosition[0];
-        }
-    }
-
-    /**
      * Animate the peek view in and send an on peek event
      *
      * @param longClickView the view that was long clicked
      * @param index         the view that long clicked
      */
-    private void peek(View longClickView, int index) {
-        if (onGeneralActionListener != null) {
+    private void peek(@NonNull View longClickView, int index) {
+        if (onGeneralActionListener != null)
             onGeneralActionListener.onPeek(longClickView, index);
-        }
 
         peekLayout.setVisibility(View.VISIBLE);
 
@@ -422,9 +319,9 @@ public class PeekAndPop {
 
         peekAnimationHelper.animatePeek(ANIMATION_PEEK_DURATION);
 
-        if (builder.parentViewGroup != null) {
+        if (builder.parentViewGroup != null)
             builder.parentViewGroup.requestDisallowInterceptTouchEvent(true);
-        }
+
         // Reset the touch coordinates to prevent accidental long hold actions on long hold views
         downX = 0;
         downY = 0;
@@ -444,14 +341,13 @@ public class PeekAndPop {
      * @param longClickView the view that was long clicked
      * @param index         the view that long clicked
      */
-    private void pop(View longClickView, int index) {
-        if (this.onGeneralActionListener != null) {
-            this.onGeneralActionListener.onPop(longClickView, index);
-        }
+    private void pop(@NonNull View longClickView, int index) {
+        if (onGeneralActionListener != null)
+            onGeneralActionListener.onPop(longClickView, index);
 
-        if (this.currentHoldAndReleaseView != null && this.onHoldAndReleaseListener != null) {
-            this.onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
-            this.currentHoldAndReleaseView = null;
+        if (currentHoldAndReleaseView != null && onHoldAndReleaseListener != null) {
+            onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
+            currentHoldAndReleaseView = null;
         }
 
         peekAnimationHelper.animatePop(new Animator.AnimatorListener() {
@@ -473,11 +369,13 @@ public class PeekAndPop {
             }
         }, ANIMATION_POP_DURATION);
 
+        // todo put this in PeekAnimationHelper
         if (flingToActionViewLayout != null)
             flingToActionViewLayout.animate().setDuration(ANIMATION_POP_DURATION).alpha(0).start();
 
-        for(LongHoldView longHoldView: longHoldViews){
-            longHoldView.getLongHoldTimer().cancel();
+        for (LongHoldView longHoldView : longHoldViews) {
+            if (longHoldView.getLongHoldTimer() != null)
+                longHoldView.getLongHoldTimer().cancel();
         }
 
         popTime = System.currentTimeMillis();
@@ -488,8 +386,6 @@ public class PeekAndPop {
      */
     private void resetViews() {
         peekLayout.setVisibility(View.GONE);
-        hasEnteredPeekViewBounds = false;
-        initialTouchOffset = -1;
         downX = 0;
         downY = 0;
 
@@ -517,96 +413,28 @@ public class PeekAndPop {
         peekView.setScaleY(0.85f);
     }
 
-    /**
-     * Move the onPeek view based on the x and y touch coordinates.
-     * The further the view is pulled from it's original position, the less
-     * it moves, creating an 'elastic' effect.
-     */
-    private void movePeekView() {
-        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            float adjustedPosition = downY - initialTouchOffset;
-            float totalDistanceTravelled = 0 - (adjustedPosition - peekViewOriginalPosition[1]);
-            float amountToMove = peekViewOriginalPosition[1] - (totalDistanceTravelled / 3f + (float) Math.sqrt(totalDistanceTravelled) * 4);
-
-            if (downY > peekViewOriginalPosition[1] + initialTouchOffset) {
-                peekView.setY(peekViewOriginalPosition[1]);
-            } else if (amountToMove < peekViewMargin) {
-                peekView.setY(peekViewMargin);
-            } else {
-                peekView.setY(amountToMove);
-            }
-        } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            float adjustedPosition = downX - initialTouchOffset;
-            float totalDistanceTravelled = 0 - (adjustedPosition - peekViewOriginalPosition[0]);
-            float amountToMove = peekViewOriginalPosition[0] - (totalDistanceTravelled / 3f + (float) Math.sqrt(totalDistanceTravelled) * 4);
-
-            if (downX > peekViewOriginalPosition[0] + initialTouchOffset) {
-                peekView.setX(peekViewOriginalPosition[0]);
-            } else if (amountToMove < peekViewMargin) {
-                peekView.setX(peekViewMargin);
-            } else {
-                peekView.setX(amountToMove);
-            }
-        }
-
-        if (flingToActionViewLayout != null) {
-            transitionFlingToActionView();
-        }
+    public void setFlingTypes(boolean allowUpwardsFling, boolean allowDownwardsFling){
+        this.allowUpwardsFling = allowUpwardsFling;
+        this.allowDownwardsFling = allowDownwardsFling;
     }
 
-    /**
-     * Fades, moves and scales the flingToActionViewLayoutId in based on the peekView's
-     * current position.
-     **/
-    private void transitionFlingToActionView() {
-        float ratio;
-        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            ratio = (peekViewOriginalPosition[1] - peekView.getY()) / (peekViewOriginalPosition[1]);
-            flingToActionViewLayout.setTranslationY(ratio * flingToActionViewLayout.getHeight());
-        } else {
-            ratio = (peekViewOriginalPosition[0] - peekView.getX()) / (peekViewOriginalPosition[0]);
-            flingToActionViewLayout.setTranslationX(ratio * flingToActionViewLayout.getWidth());
-        }
-
-        ratio = ratio * 2;
-        ratio = (1 - ratio);
-
-        flingToActionViewLayout.setScaleX(Math.min(ratio, 1));
-        flingToActionViewLayout.setScaleY(Math.min(ratio, 1));
-        flingToActionViewLayout.setAlpha(ratio);
+    public void setCurrentHoldAndReleaseView(@Nullable HoldAndReleaseView currentHoldAndReleaseView) {
+        this.currentHoldAndReleaseView = currentHoldAndReleaseView;
     }
 
-    private int convertDpToPx(int dp) {
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, builder.activity.getResources().getDisplayMetrics());
-    }
-
-    private boolean pointInViewBounds(View view, int x, int y) {
-        int[] l = new int[2];
-        view.getLocationOnScreen(l);
-        int viewX = l[0];
-        int viewY = l[1];
-        int viewWidth = view.getWidth();
-        int viewHeight = view.getHeight();
-
-        if (x < viewX || x > viewX + viewWidth || y < viewY || y > viewY + viewHeight) {
-            return false;
-        }
-        return true;
-    }
-
-    public void setOnFlingToActionListener(OnFlingToActionListener onFlingToActionListener) {
+    public void setOnFlingToActionListener(@Nullable OnFlingToActionListener onFlingToActionListener) {
         this.onFlingToActionListener = onFlingToActionListener;
     }
 
-    public void setOnGeneralActionListener(OnGeneralActionListener onGeneralActionListener) {
+    public void setOnGeneralActionListener(@Nullable OnGeneralActionListener onGeneralActionListener) {
         this.onGeneralActionListener = onGeneralActionListener;
     }
 
-    public void setOnLongHoldListener(OnLongHoldListener onLongHoldListener) {
+    public void setOnLongHoldListener(@Nullable OnLongHoldListener onLongHoldListener) {
         this.onLongHoldListener = onLongHoldListener;
     }
 
-    public void setOnHoldAndReleaseListener(OnHoldAndReleaseListener onHoldAndReleaseListener) {
+    public void setOnHoldAndReleaseListener(@Nullable OnHoldAndReleaseListener onHoldAndReleaseListener) {
         this.onHoldAndReleaseListener = onHoldAndReleaseListener;
     }
 
@@ -617,7 +445,7 @@ public class PeekAndPop {
      * @param position add position of view if in a list, this will be returned in the general action listener
      *                 and drag to action listener.
      */
-    public void addLongClickView(View view, int position) {
+    public void addLongClickView(@NonNull View view, int position) {
         initialiseGestureListener(view, position);
     }
 
@@ -628,12 +456,12 @@ public class PeekAndPop {
      * @param longHoldViewId id of the view to receive on long hold events
      * @return
      */
-    public void addLongHoldView(int longHoldViewId, boolean receiveMultipleEvents) {
+    public void addLongHoldView(@IdRes int longHoldViewId, boolean receiveMultipleEvents) {
         this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), receiveMultipleEvents));
     }
 
-    // document
-    public void addHoldAndRelease(int holdAndReleaseViewId) {
+    // todo document
+    public void addHoldAndReleaseView(@IdRes int holdAndReleaseViewId) {
         this.holdAndReleaseViews.add(new HoldAndReleaseView(peekView.findViewById(holdAndReleaseViewId)));
     }
 
@@ -683,6 +511,8 @@ public class PeekAndPop {
 
         protected boolean blurBackground = true;
         protected boolean animateFling = true;
+        protected boolean allowUpwardsFling = true;
+        protected boolean allowDownwardsFling = true;
 
         public Builder(@NonNull Activity activity) {
             this.activity = activity;
@@ -695,7 +525,7 @@ public class PeekAndPop {
          * @param peekLayoutId id of the onPeek layout resource
          * @return
          */
-        public Builder peekLayout(int peekLayoutId) {
+        public Builder peekLayout(@LayoutRes int peekLayoutId) {
             this.peekLayoutId = peekLayoutId;
             return this;
         }
@@ -720,7 +550,7 @@ public class PeekAndPop {
          * @param flingToActionViewLayout
          * @return
          */
-        public Builder flingToActionViewLayout(int flingToActionViewLayout) {
+        public Builder flingToActionViewLayout(@LayoutRes int flingToActionViewLayout) {
             this.flingToActionViewLayoutId = flingToActionViewLayout;
             return this;
         }
@@ -742,7 +572,7 @@ public class PeekAndPop {
          * @param onGeneralActionListener
          * @return
          */
-        public Builder generalActionListener(@NonNull OnGeneralActionListener onGeneralActionListener) {
+        public Builder onGeneralActionListener(@NonNull OnGeneralActionListener onGeneralActionListener) {
             this.onGeneralActionListener = onGeneralActionListener;
             return this;
         }
@@ -807,6 +637,15 @@ public class PeekAndPop {
         }
 
         /**
+         * Set the accepted fling types, defaults to both being true.
+         */
+        public Builder flingTypes(boolean allowUpwardsFling, boolean allowDownwardsFling){
+            this.allowUpwardsFling = allowUpwardsFling;
+            this.allowDownwardsFling = allowDownwardsFling;
+            return this;
+        }
+
+        /**
          * Create the PeekAndPop object
          *
          * @return the PeekAndPop object
@@ -817,7 +656,6 @@ public class PeekAndPop {
             }
             return new PeekAndPop(this);
         }
-
     }
 
     private final class PeekAndPopOnTouchListener implements View.OnTouchListener {
@@ -835,29 +673,37 @@ public class PeekAndPop {
         public boolean onTouch(final View view, MotionEvent event) {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 peekShown = false;
-                longHoldTimer = new Timer();
-                longHoldTimer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        builder.activity.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                peekShown = true;
-                                peek(view, position);
-                            }
-                        });
-                    }
-                }, LONG_CLICK_DURATION);
+                startTimer(view);
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 longHoldTimer.cancel();
-                if (peekShown) {
-                    respondToTouch(view, event, position);
-                }
+                if (peekShown)
+                    handleTouch(view, event, position);
                 return peekShown;
             }
 
-            respondToTouch(view, event, position);
+            handleTouch(view, event, position);
             return false;
+        }
+
+        /**
+         * Start the longHoldTimer, if it reaches the long hold duration, peek
+         *
+         * @param view
+         */
+        private void startTimer(@NonNull final View view) {
+            longHoldTimer = new Timer();
+            longHoldTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    builder.activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            peekShown = true;
+                            peek(view, position);
+                        }
+                    });
+                }
+            }, LONG_CLICK_DURATION);
         }
     }
 
@@ -876,37 +722,53 @@ public class PeekAndPop {
 
         @Override
         public boolean onDown(MotionEvent e) {
-            Log.d("PeekAndPop", "Down");
             return true;
         }
 
         @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            if (onFlingToActionListener != null) {
-                if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-                    if (velocityY > FLING_VELOCITY_THRESHOLD) {
-                        return true;
-                    }
-                } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    if (velocityX > FLING_VELOCITY_THRESHOLD) {
-                        return true;
-                    }
+        public boolean onFling(MotionEvent firstEvent, MotionEvent secondEvent, float velocityX, float velocityY) {
+            if (onFlingToActionListener != null)
+                return handleFling(velocityX, velocityY);
+            else
+                return true;
+        }
+
+        private boolean handleFling(float velocityX, float velocityY) {
+            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                if (velocityY < -FLING_VELOCITY_THRESHOLD && allowUpwardsFling) {
+                    flingToAction(FLING_UPWARDS, velocityX, velocityY);
+                    return false;
+                } else if (velocityY > FLING_VELOCITY_THRESHOLD && allowDownwardsFling) {
+                    flingToAction(FLING_DOWNWARDS, velocityX, velocityY);
+                    return false;
                 }
-                onFlingToActionListener.onFlingToAction(view, position);
-                Log.d("PeekAndPop", "Fling");
-                if (animateFling) {
-                    peekAnimationHelper.animateFling(velocityX, velocityY, ANIMATION_POP_DURATION, popTime,
-                            FLING_VELOCITY_THRESHOLD, FLING_VELOCITY_MAX);
-                    peekAnimationHelper.animateExpand(ANIMATION_POP_DURATION, popTime);
+            } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                if (velocityX < -FLING_VELOCITY_THRESHOLD && allowUpwardsFling) {
+                    flingToAction(FLING_UPWARDS, velocityX, velocityY);
+                    return false;
+                } else if (velocityX > FLING_VELOCITY_THRESHOLD && allowDownwardsFling) {
+                    flingToAction(FLING_DOWNWARDS, velocityX, velocityY);
+                    return false;
                 }
             }
-
             return true;
+        }
+
+        private void flingToAction(@FlingDirections int direction, float velocityX, float velocityY) {
+            onFlingToActionListener.onFlingToAction(view, position, direction);
+            if (animateFling) {
+                if (direction == FLING_UPWARDS) {
+                    peekAnimationHelper.animateExpand(ANIMATION_POP_DURATION, popTime);
+                    peekAnimationHelper.animateFling(velocityX, velocityY, ANIMATION_POP_DURATION, popTime, -FLING_VELOCITY_MAX);
+                } else {
+                    peekAnimationHelper.animateFling(velocityX, velocityY, ANIMATION_POP_DURATION, popTime, FLING_VELOCITY_MAX);
+                }
+            }
         }
     }
 
     public interface OnFlingToActionListener {
-        void onFlingToAction(View longClickView, int position);
+        void onFlingToAction(View longClickView, int position, int direction);
     }
 
     public interface OnGeneralActionListener {

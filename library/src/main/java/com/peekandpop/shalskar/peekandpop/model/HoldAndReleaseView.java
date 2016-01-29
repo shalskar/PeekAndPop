@@ -1,8 +1,12 @@
 package com.peekandpop.shalskar.peekandpop.model;
 
+import android.support.annotation.NonNull;
 import android.view.View;
 
+import com.peekandpop.shalskar.peekandpop.PeekAndPop;
+
 import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by Vincent on 9/01/2016.
@@ -13,11 +17,25 @@ public class HoldAndReleaseView {
 
     private int position;
 
-    protected Timer longHoldTimer;
+    protected Timer holdAndReleaseTimer;
 
     public HoldAndReleaseView(View view) {
         this.view = view;
         this.position = -1;
+    }
+
+    public void startHoldAndReleaseTimer(@NonNull final PeekAndPop peekAndPop, final int position, long duration) {
+        final Timer holdAndReleaseTimer = new Timer();
+        this.position = position;
+
+        holdAndReleaseTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                peekAndPop.setCurrentHoldAndReleaseView(HoldAndReleaseView.this);
+            }
+        }, duration);
+
+        this.holdAndReleaseTimer = holdAndReleaseTimer;
     }
 
     public int getPosition() {
@@ -36,11 +54,11 @@ public class HoldAndReleaseView {
         this.view = view;
     }
 
-    public Timer getLongHoldTimer() {
-        return longHoldTimer;
+    public Timer getHoldAndReleaseTimer() {
+        return holdAndReleaseTimer;
     }
 
-    public void setLongHoldTimer(Timer longHoldTimer) {
-        this.longHoldTimer = longHoldTimer;
+    public void setHoldAndReleaseTimer(Timer holdAndReleaseTimer) {
+        this.holdAndReleaseTimer = holdAndReleaseTimer;
     }
 }

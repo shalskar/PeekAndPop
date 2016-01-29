@@ -154,31 +154,27 @@ public class PeekAnimationHelper {
      * the time since the pop occurred.
      * If there is a fling to action layout, animate this as well.
      **/
-    public void animateFling(float velocityX, float velocityY, int duration, long popTime, int flingVelocityThreshold, float flingVelocityMax) {
+    public void animateFling(float velocityX, float velocityY, int duration, long popTime, float flingVelocityMax) {
         long timeDifference = System.currentTimeMillis() - popTime;
         if (context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
-            if (velocityY < flingVelocityThreshold) {
-                float translationAmount = Math.max(velocityY / 16, flingVelocityMax);
-                ObjectAnimator animatorTranslateY = ObjectAnimator.ofFloat(peekView, "translationY", translationAmount);
-                animatorTranslateY.setInterpolator(new DecelerateInterpolator());
-                animatorTranslateY.setDuration(Math.max(0, duration - timeDifference));
-                animatorTranslateY.start();
-                if (flingToActionLayout != null) {
-                    flingToActionLayout.animate().setDuration(duration / 2).alpha(0).translationY(translationAmount / 3)
-                            .setInterpolator(new DecelerateInterpolator()).start();
-                }
+            float translationAmount = Math.max(velocityY / 8, flingVelocityMax);
+            ObjectAnimator animatorTranslateY = ObjectAnimator.ofFloat(peekView, "translationY", translationAmount);
+            animatorTranslateY.setInterpolator(new DecelerateInterpolator());
+            animatorTranslateY.setDuration(Math.max(0, duration - timeDifference));
+            animatorTranslateY.start();
+            if (flingToActionLayout != null) {
+                flingToActionLayout.animate().setDuration(duration / 2).alpha(0).translationY(translationAmount / 3)
+                        .setInterpolator(new DecelerateInterpolator()).start();
             }
         } else if (context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            if (velocityX < flingVelocityThreshold) {
-                float translationAmount = Math.max(velocityX / 16, flingVelocityMax);
-                ObjectAnimator animatorTranslateX = ObjectAnimator.ofFloat(peekView, "translationX", translationAmount);
-                animatorTranslateX.setInterpolator(new DecelerateInterpolator());
-                animatorTranslateX.setDuration(Math.max(0, duration - timeDifference));
-                animatorTranslateX.start();
-                if (flingToActionLayout != null) {
-                    flingToActionLayout.animate().setDuration(duration / 2).alpha(0.5f).translationX(translationAmount / 3)
-                            .setInterpolator(new DecelerateInterpolator()).start();
-                }
+            float translationAmount = Math.max(velocityX / 8, flingVelocityMax);
+            ObjectAnimator animatorTranslateX = ObjectAnimator.ofFloat(peekView, "translationX", translationAmount);
+            animatorTranslateX.setInterpolator(new DecelerateInterpolator());
+            animatorTranslateX.setDuration(Math.max(0, duration - timeDifference));
+            animatorTranslateX.start();
+            if (flingToActionLayout != null) {
+                flingToActionLayout.animate().setDuration(duration / 2).alpha(0.5f).translationX(translationAmount / 3)
+                        .setInterpolator(new DecelerateInterpolator()).start();
             }
         }
     }
