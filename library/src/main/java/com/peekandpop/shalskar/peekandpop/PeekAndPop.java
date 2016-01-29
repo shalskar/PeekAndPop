@@ -115,7 +115,7 @@ public class PeekAndPop {
      * Inflate the peekView, add it to the peekLayout with a shaded/blurred background,
      * bring it to the front and set the peekLayout to have an alpha of 0. Get the peekView's
      * original Y position for use when dragging.
-     * <p/>
+     * <p>
      * If a flingToActionViewLayoutId is supplied, inflate the flingToActionViewLayoutId.
      */
     protected void createPeekView() {
@@ -206,10 +206,10 @@ public class PeekAndPop {
 
     /**
      * Check if user has moved or lifted their finger.
-     * <p/>
+     * <p>
      * If lifted, onPop the view and check if their is a drag to action listener, check
      * if it had been dragged enough and send an event if so.
-     * <p/>
+     * <p>
      * If moved, check if the user has entered the bounds of the onPeek view.
      * If the user is within the bounds, and is at the edges of the view, then
      * move it appropriately.
@@ -312,7 +312,7 @@ public class PeekAndPop {
                 sendOnLongHoldEvent(longHoldView.getView(), position);
                 if (longHoldView.isReceiveMultipleEvents()) {
                     long duration = customLongHoldDuration != -1 ? customLongHoldDuration : LONG_HOLD_DURATION;
-                    duration = (long)(duration * 1.5);
+                    duration = (long) (duration * 1.5);
                     setLongHoldViewTimer(longHoldView, position, duration);
                 }
             }
@@ -338,7 +338,7 @@ public class PeekAndPop {
             } else if (!viewInBounds && holdAndReleaseView.getLongHoldTimer() != null) {
                 holdAndReleaseView.getLongHoldTimer().cancel();
                 holdAndReleaseView.setLongHoldTimer(null);
-                if(holdAndReleaseView == currentHoldAndReleaseView){
+                if (holdAndReleaseView == currentHoldAndReleaseView) {
                     holdAndReleaseView.setPosition(-1);
                     currentHoldAndReleaseView = null;
                 }
@@ -357,7 +357,6 @@ public class PeekAndPop {
     }
 
     /**
-     *
      * @param holdAndReleaseView
      * @param position
      * @param duration
@@ -374,7 +373,6 @@ public class PeekAndPop {
 
         holdAndReleaseView.setLongHoldTimer(longHoldTimer);
     }
-
 
 
     /**
@@ -451,7 +449,7 @@ public class PeekAndPop {
             this.onGeneralActionListener.onPop(longClickView, index);
         }
 
-        if (this.currentHoldAndReleaseView != null && this.onHoldAndReleaseListener != null){
+        if (this.currentHoldAndReleaseView != null && this.onHoldAndReleaseListener != null) {
             this.onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
         }
 
@@ -654,7 +652,7 @@ public class PeekAndPop {
         this.animateFling = animateFling;
     }
 
-    public void setLongHoldDuration(int duration){
+    public void setLongHoldDuration(int duration) {
         this.customLongHoldDuration = duration;
     }
 
@@ -809,7 +807,7 @@ public class PeekAndPop {
          * @return the PeekAndPop object
          */
         public PeekAndPop build() {
-            if(peekLayoutId == -1){
+            if (peekLayoutId == -1) {
                 throw new IllegalArgumentException("No peekLayoutId specified.");
             }
             return new PeekAndPop(this);
@@ -847,7 +845,9 @@ public class PeekAndPop {
                 }, LONG_CLICK_DURATION);
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 longHoldTimer.cancel();
-                respondToTouch(view, event, position);
+                if (peekShown) {
+                    respondToTouch(view, event, position);
+                }
                 return peekShown;
             }
 
