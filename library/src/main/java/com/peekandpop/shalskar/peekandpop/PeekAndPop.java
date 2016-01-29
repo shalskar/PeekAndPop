@@ -364,11 +364,11 @@ public class PeekAndPop {
      */
     private void setHoldAndReleaseViewTimer(final HoldAndReleaseView holdAndReleaseView, final int position, long duration) {
         final Timer longHoldTimer = new Timer();
-        currentHoldAndReleaseView.setPosition(position);
         longHoldTimer.schedule(new TimerTask() {
             @Override
             public void run() {
                 currentHoldAndReleaseView = holdAndReleaseView;
+                currentHoldAndReleaseView.setPosition(position);
             }
         }, duration);
 
