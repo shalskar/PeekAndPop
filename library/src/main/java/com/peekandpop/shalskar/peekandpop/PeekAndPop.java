@@ -85,6 +85,7 @@ public class PeekAndPop {
         this.onFlingToActionListener = builder.onFlingToActionListener;
         this.onGeneralActionListener = builder.onGeneralActionListener;
         this.onLongHoldListener = builder.onLongHoldListener;
+        this.onHoldAndReleaseListener = builder.onHoldAndReleaseListener;
         this.gestureListener = new GestureListener();
         this.gestureDetector = new GestureDetector(builder.activity, this.gestureListener);
         this.animateFling = builder.animateFling;
@@ -600,6 +601,10 @@ public class PeekAndPop {
 
     public void setOnLongHoldListener(OnLongHoldListener onLongHoldListener) {
         this.onLongHoldListener = onLongHoldListener;
+    }
+
+    public void setOnHoldAndReleaseListener(OnHoldAndReleaseListener onHoldAndReleaseListener) {
+        this.onHoldAndReleaseListener = onHoldAndReleaseListener;
     }
 
     /**
