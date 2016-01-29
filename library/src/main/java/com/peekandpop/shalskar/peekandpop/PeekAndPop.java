@@ -90,6 +90,7 @@ public class PeekAndPop {
         this.animateFling = builder.animateFling;
 
         this.longHoldViews = new ArrayList<>();
+        this.holdAndReleaseViews = new ArrayList<>();
 
         orientation = builder.activity.getResources().getConfiguration().orientation;
 
