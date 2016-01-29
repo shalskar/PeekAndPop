@@ -798,7 +798,7 @@ public class PeekAndPop {
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             if (onFlingToActionListener != null) {
                 if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-                    if (velocityY < FLING_VELOCITY_THRESHOLD) {
+                    if (velocityY > FLING_VELOCITY_THRESHOLD) {
                         return true;
                     }
                 } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
