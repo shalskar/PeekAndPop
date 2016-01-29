@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.RelativeLayout;
 
+import com.peekandpop.shalskar.peekandpop.model.HoldAndReleaseView;
 import com.peekandpop.shalskar.peekandpop.model.LongHoldView;
 
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ public class PeekAndPop {
 
     protected static final long LONG_CLICK_DURATION = 200;
     protected static final long LONG_HOLD_DURATION = 750;
+    protected static final long HOLD_AND_RELEASE_DURATION = 150;
 
     protected static final int FLING_VELOCITY_THRESHOLD = -3000;
     private static final float FLING_VELOCITY_MAX = -350;
@@ -56,10 +58,13 @@ public class PeekAndPop {
     protected View flingToActionViewLayout;
 
     protected ArrayList<LongHoldView> longHoldViews;
+    protected ArrayList<HoldAndReleaseView> holdAndReleaseViews;
+    protected HoldAndReleaseView currentHoldAndReleaseView;
 
     protected OnFlingToActionListener onFlingToActionListener;
     protected OnGeneralActionListener onGeneralActionListener;
     protected OnLongHoldListener onLongHoldListener;
+    protected OnHoldAndReleaseListener onHoldAndReleaseListener;
     protected GestureListener gestureListener;
     protected GestureDetector gestureDetector;
 
@@ -226,6 +231,9 @@ public class PeekAndPop {
 
             if (onLongHoldListener != null)
                 checkLongHoldViews(position);
+
+            if (onHoldAndReleaseListener != null)
+                checkHoldAndReleaseViews(position);
         }
         if (gestureDetector != null) {
             gestureDetector.onTouchEvent(event);
@@ -311,6 +319,31 @@ public class PeekAndPop {
         longHoldView.setLongHoldTimer(longHoldTimer);
     }
 
+
+    /**
+     * Check all the long hold views to see if they are being held and if so for how long
+     * they have been held and send a long hold event if > 750ms.
+     *
+     * @param position
+     */
+    private void checkHoldAndReleaseViews(final int position) {
+        for (int i = 0; i < holdAndReleaseViews.size(); i++) {
+            final HoldAndReleaseView holdAndReleaseView = holdAndReleaseViews.get(i);
+            boolean viewInBounds = pointInViewBounds(holdAndReleaseView.getView(), downX, downY);
+
+            if (viewInBounds && holdAndReleaseView.getLongHoldTimer() == null) {
+                setHoldAndReleaseViewTimer(holdAndReleaseView, position, HOLD_AND_RELEASE_DURATION);
+            } else if (!viewInBounds && holdAndReleaseView.getLongHoldTimer() != null) {
+                holdAndReleaseView.getLongHoldTimer().cancel();
+                holdAndReleaseView.setLongHoldTimer(null);
+                if(holdAndReleaseView == currentHoldAndReleaseView){
+                    holdAndReleaseView.setPosition(-1);
+                    currentHoldAndReleaseView = null;
+                }
+            }
+        }
+    }
+
     private void sendOnLongHoldEvent(final View view, final int position) {
         builder.activity.runOnUiThread(new Runnable() {
             @Override
@@ -320,6 +353,27 @@ public class PeekAndPop {
         });
 
     }
+
+    /**
+     *
+     * @param holdAndReleaseView
+     * @param position
+     * @param duration
+     */
+    private void setHoldAndReleaseViewTimer(final HoldAndReleaseView holdAndReleaseView, final int position, long duration) {
+        final Timer longHoldTimer = new Timer();
+        currentHoldAndReleaseView.setPosition(position);
+        longHoldTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                currentHoldAndReleaseView = holdAndReleaseView;
+            }
+        }, duration);
+
+        holdAndReleaseView.setLongHoldTimer(longHoldTimer);
+    }
+
+
 
     /**
      * Initialise the peek view original position to be centred in the middle of the screen.
@@ -393,6 +447,10 @@ public class PeekAndPop {
     private void pop(View longClickView, int index) {
         if (this.onGeneralActionListener != null) {
             this.onGeneralActionListener.onPop(longClickView, index);
+        }
+
+        if (this.currentHoldAndReleaseView != null && this.onHoldAndReleaseListener != null){
+            this.onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
         }
 
         peekAnimationHelper.animatePop(new Animator.AnimatorListener() {
@@ -565,6 +623,11 @@ public class PeekAndPop {
         this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), receiveMultipleEvents));
     }
 
+    // document
+    public void addHoldAndRelease(int holdAndReleaseViewId) {
+        this.holdAndReleaseViews.add(new HoldAndReleaseView(peekView.findViewById(holdAndReleaseViewId)));
+    }
+
     public View getPeekView() {
         return peekView;
     }
@@ -607,6 +670,7 @@ public class PeekAndPop {
         protected OnFlingToActionListener onFlingToActionListener;
         protected OnGeneralActionListener onGeneralActionListener;
         protected OnLongHoldListener onLongHoldListener;
+        protected OnHoldAndReleaseListener onHoldAndReleaseListener;
 
         protected boolean blurBackground = true;
         protected boolean animateFling = true;
@@ -683,6 +747,17 @@ public class PeekAndPop {
          */
         public Builder onLongHoldListener(@NonNull OnLongHoldListener onLongHoldListener) {
             this.onLongHoldListener = onLongHoldListener;
+            return this;
+        }
+
+        /**
+         * A listener for the hold and release views to receive onHoldAndRelease actions.
+         *
+         * @param onHoldAndReleaseListener
+         * @return
+         */
+        public Builder onHoldAndReleaseListener(@NonNull OnHoldAndReleaseListener onHoldAndReleaseListener) {
+            this.onHoldAndReleaseListener = onHoldAndReleaseListener;
             return this;
         }
 
@@ -831,6 +906,10 @@ public class PeekAndPop {
 
     public interface OnLongHoldListener {
         void onLongHold(View view, int position);
+    }
+
+    public interface OnHoldAndReleaseListener {
+        void onHoldAndRelease(View view, int position);
     }
 
 }
