@@ -799,13 +799,14 @@ public class PeekAndPop {
             if (onFlingToActionListener != null) {
                 if (orientation == Configuration.ORIENTATION_PORTRAIT) {
                     if (velocityY < FLING_VELOCITY_THRESHOLD) {
-                        onFlingToActionListener.onFlingToAction(view, position);
+                        return true;
                     }
                 } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    if (velocityX < FLING_VELOCITY_THRESHOLD) {
-                        onFlingToActionListener.onFlingToAction(view, position);
+                    if (velocityX > FLING_VELOCITY_THRESHOLD) {
+                        return true;
                     }
                 }
+                onFlingToActionListener.onFlingToAction(view, position);
                 Log.d("PeekAndPop", "Fling");
                 if (animateFling) {
                     peekAnimationHelper.animateFling(velocityX, velocityY, ANIMATION_POP_DURATION, popTime,
