@@ -451,6 +451,7 @@ public class PeekAndPop {
 
         if (this.currentHoldAndReleaseView != null && this.onHoldAndReleaseListener != null) {
             this.onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
+            this.currentHoldAndReleaseView = null;
         }
 
         peekAnimationHelper.animatePop(new Animator.AnimatorListener() {
@@ -474,6 +475,10 @@ public class PeekAndPop {
 
         if (flingToActionViewLayout != null)
             flingToActionViewLayout.animate().setDuration(ANIMATION_POP_DURATION).alpha(0).start();
+
+        for(LongHoldView longHoldView: longHoldViews){
+            longHoldView.getLongHoldTimer().cancel();
+        }
 
         popTime = System.currentTimeMillis();
     }
