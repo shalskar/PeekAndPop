@@ -38,7 +38,7 @@ public class LongHoldView {
             public void run() {
                 peekAndPop.sendOnLongHoldEvent(view, position);
                 if (receiveMultipleEvents) {
-                    startLongHoldViewTimer(peekAndPop, position, (long) (duration * 1.5));
+                    startLongHoldViewTimer(peekAndPop, position, (long) (duration));
                 }
             }
         }, duration);
