@@ -6,14 +6,17 @@ PeekAndPop is an open source Android library, inspired by Instagram's latest 3D 
 As 3D touch is not available for android, this library uses long hold.
 
 Peek and pop allows you to long click on a view to "peek" and see a larger view in the centre of the screen.
-To "pop" you can drag the view to the top of the screen and release.
+The pop feature can be imitated using fling to action gestures or from a hold and release event.
 
 Features:
 - Create a basic peek and pop that shows on long click and is dismissed on touch up.
-- Fling to action, where flinging the view to the top while trigger an action.
-- Add an extra view to be shown above the view that animates out when flung (can be used to help show users what to do.)
-- Specify extra views that can listen to long hold events (if the user holds the view for a 
+- Fling to action, where flinging the view upwards or downwards (sidewards in landscape) triggers an event.
+- Specify views within the peek view layout that can listen to long hold events (if the user holds the view for a 
 certain amount of time).
+- Specify views within the peek view layout that can listen to hold and release events (where the user holds the view
+ and then releases).
+
+Please check the examples below to see the features in action (to be added):
 
 
 Author is Vincent Te Tau
