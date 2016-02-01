@@ -29,20 +29,20 @@ certain amount of time).
 This library is hosted on Jitpack.io, which means to use it you will have to add the following to your root `build.gradle` file.
 
 ```gradle
-	allprojects {
-		repositories {
-			...
-			maven { url "https://jitpack.io" }
-		}
+allprojects {
+	repositories {
+		...
+		maven { url "https://jitpack.io" }
 	}
+}
 ```
 
 And then you will need to add the following dependency to your applications `build.gradle` file.
 
 ```gradle
-	dependencies {
-	        compile 'com.github.shalskar:PeekAndPop:5a012c64ac'
-	}
+dependencies {
+        compile 'com.github.shalskar:PeekAndPop:5a012c64ac'
+}
 ```
 
 ### Usage:
@@ -57,6 +57,13 @@ PeekAndPop peekAndPop = new PeekAndPop.Builder(this)
                 .build();
 ```
 
+You can get the peek view by calling `getPeekView()` on the `PeekAndPop` object, and use `findViewById()` to get access any views in the peek layout.
+
+```java
+View peekView = peekAndPop.getPeekView();
+ImageView imageView = peekView.findViewById(R.id.image_view);
+TextView textView = peekView.findViewById(R.id.text_view);
+```
 
 Often you will want to have the peek and pop shown when an item in a list (or other scrollable view) is clicked on, to ensure the peek and pop works correctly, you will have to add this line of code:
 
@@ -76,17 +83,17 @@ Often you will want to have the peek and pop shown when an item in a list (or ot
 You can set an `OnGeneralActionListener` to receive `onPeek()` and `onPop()` events:
 
 ```java           
-               .onGeneralActionListener(new PeekAndPop.OnGeneralActionListener() {
-                    @Override
-                    public void onPeek(View longClickView, int position) {
+.onGeneralActionListener(new PeekAndPop.OnGeneralActionListener() {
+        @Override
+        public void onPeek(View longClickView, int position) {
                         
-                    }
+        }
 
-                    @Override
-                    public void onPop(View longClickView, int position) {
+        @Override
+        public void onPop(View longClickView, int position) {
 
-                    }
-                })
+        }
+})
 ```
 
 The parameters being the view that was long clicked and the position of that view.
@@ -100,12 +107,12 @@ The parameters being the view that was long clicked and the position of that vie
 If you provide an `OnFlingToActionListener` then you will automatically be able to fling the view upwards or downwards and listen for those events:
 
 ```java
-                .onFlingToActionListener(new PeekAndPop.OnFlingToActionListener() {
-                    @Override
-                    public void onFlingToAction(View longClickView, int position, int direction) {
+.onFlingToActionListener(new PeekAndPop.OnFlingToActionListener() {
+        @Override
+        public void onFlingToAction(View longClickView, int position, int direction) {
                         
-                    }
-                })
+        }
+})
 ```
 
 The parameters being the same as above and the direction in which the view was flung. (`FLUNG_UPWARDS` or `FLUNG_DOWNWARDS`.)
@@ -113,13 +120,13 @@ The parameters being the same as above and the direction in which the view was f
 If you only want to listen for one direction you can set that like so:
 
 ```java           
-                .flingTypes(true, false)
+.flingTypes(true, false)
 ```
 
 And if you don't want to animate the view when flinging:
 
 ```java
-                .animateFling(false)
+.animateFling(false)
 ```
 
 ##### Listening for hold and release events
@@ -131,19 +138,19 @@ And if you don't want to animate the view when flinging:
 Similar to Instagram, you can specify views inside the peek layout that will trigger events if the user releases on them:
 
 ```java
-                .onHoldAndReleaseListener(new PeekAndPop.OnHoldAndReleaseListener() {
-                    @Override
-                    public void onHoldAndRelease(View view, int position) {
+.onHoldAndReleaseListener(new PeekAndPop.OnHoldAndReleaseListener() {
+        @Override
+        public void onHoldAndRelease(View view, int position) {
                         
-                    }
-                })
+        }
+})
 ```
 
 And then you must specify the id's of the views you would like to receive events from after you have built the PeekAndPop object:
 
 ```java
-        peekAndPop.addHoldAndReleaseView(R.id.view);
-        peekAndPop.addHoldAndReleaseView(R.id.view2);
+peekAndPop.addHoldAndReleaseView(R.id.view);
+peekAndPop.addHoldAndReleaseView(R.id.view2);
 ```
 
 ##### Listening for long hold events
@@ -154,19 +161,19 @@ And then you must specify the id's of the views you would like to receive events
 You can specify views inside the peek layout that will trigger an event if the user holds their finger/thumb over the view for a certain duration (default is 850ms). If `receiveMultipleEvents` is true than events will be contiuously triggered until the user moves their finger/thumb off the view:
 
 ```java
-                .onLongHoldListener(new PeekAndPop.OnLongHoldListener() {
-                    @Override
-                    public void onLongHold(View view, int position) {
+.onLongHoldListener(new PeekAndPop.OnLongHoldListener() {
+        @Override
+        public void onLongHold(View view, int position) {
                         
-                    }
-                })
+        }
+})
 ```
 
 And then you must specify the id's of the views you would like to receive events from after you have built the PeekAndPop object, aswell as a boolean argument whether or not you want to receive multiple events:
 
 ```java
-        peekAndPop.addLongHoldView(R.id.view, true);
-        peekAndPop.addLongHoldView(R.id.view, false);
+peekAndPop.addLongHoldView(R.id.view, true);
+peekAndPop.addLongHoldView(R.id.view, false);
 ```
 
 
