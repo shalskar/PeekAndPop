@@ -1,7 +1,5 @@
 # PeekAndPop
 
-### THIS LIBRARY IS CURRENTLY UNDER DEVELOPMENT AND NOT INTENDED TO BE USED IN PRODUCTION 
-
 PeekAndPop is an open source Android library, inspired by Instagram's latest 3D touch feature.
 As 3D touch is not available for android, this library uses long hold.
 
@@ -41,7 +39,7 @@ And then you will need to add the following dependency to your applications `bui
 
 ```gradle
 dependencies {
-        compile 'com.github.shalskar:PeekAndPop:5a012c64ac'
+        compile 'com.github.shalskar:PeekAndPop:v0.1'
 }
 ```
 
