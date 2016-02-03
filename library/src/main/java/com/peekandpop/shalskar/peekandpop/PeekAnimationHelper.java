@@ -5,7 +5,9 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.Configuration;
-import android.util.DisplayMetrics;
+import android.graphics.drawable.RippleDrawable;
+import android.os.Build;
+import android.support.annotation.NonNull;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -130,5 +132,17 @@ public class PeekAnimationHelper {
             animatorTranslateX.setDuration(Math.max(0, duration - timeDifference));
             animatorTranslateX.start();
         }
+    }
+
+    /**
+     * Workaround due to custom long touch listener causing ripples not to pop.
+     *
+     * @param view
+     */
+    public static void forceRippleAnimation(@NonNull View view){
+        if(view.getBackground() instanceof  RippleDrawable)
+            view.getBackground().setState(new int[0]);
+        if(Build.VERSION.SDK_INT >= 23 && view.getForeground() instanceof  RippleDrawable)
+            view.getForeground().setState(new int[0]);
     }
 }

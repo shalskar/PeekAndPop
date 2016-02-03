@@ -35,13 +35,13 @@ public class PeekAndPop {
     public static final int FLING_UPWARDS = 0;
     public static final int FLING_DOWNWARDS = 1;
 
-    protected static final int PEEK_VIEW_MARGIN = 40;
+    private static final int PEEK_VIEW_MARGIN = 40;
 
     protected static final long LONG_CLICK_DURATION = 200;
     protected static final long LONG_HOLD_DURATION = 850;
     protected static final long HOLD_AND_RELEASE_DURATION = 100;
 
-    protected static final int FLING_VELOCITY_THRESHOLD = 3000;
+    private static final int FLING_VELOCITY_THRESHOLD = 3000;
     private static final float FLING_VELOCITY_MAX = 1000;
 
     protected static final int ANIMATION_PEEK_DURATION = 300;
@@ -53,10 +53,10 @@ public class PeekAndPop {
     protected ViewGroup peekLayout;
     protected PeekAnimationHelper peekAnimationHelper;
 
-    protected boolean blurBackground;
-    protected boolean animateFling;
-    protected boolean allowUpwardsFling;
-    protected boolean allowDownwardsFling;
+    private boolean blurBackground;
+    private boolean animateFling;
+    private boolean allowUpwardsFling;
+    private boolean allowDownwardsFling;
     private int customLongHoldDuration = -1;
 
     protected ArrayList<LongHoldView> longHoldViews;
@@ -118,9 +118,9 @@ public class PeekAndPop {
 
         // Center onPeek view in the onPeek layout and add to the container view group
         peekLayout = (RelativeLayout) inflater.inflate(R.layout.peek_background, contentView, false);
-
         peekView = inflater.inflate(builder.peekLayoutId, peekLayout, false);
         peekView.setId(R.id.peek_view);
+
         RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) peekView.getLayoutParams();
         layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
         layoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
@@ -129,19 +129,22 @@ public class PeekAndPop {
 
         peekLayout.addView(peekView, layoutParams);
         contentView.addView(peekLayout);
+
         peekLayout.setVisibility(View.GONE);
         peekLayout.setAlpha(0);
+        peekLayout.requestLayout();
 
         peekAnimationHelper = new PeekAnimationHelper(builder.activity.getApplicationContext(), peekLayout, peekView);
 
-        peekLayout.requestLayout();
         bringViewsToFront();
         initialiseViewTreeObserver();
         resetViews();
     }
 
+    /**
+     * If lollipop or above, use elevation to bring peek views to the front
+     */
     private void bringViewsToFront() {
-        // If lollipop or above, use elevation to bring peek views to the front
         if (Build.VERSION.SDK_INT >= 21) {
             peekLayout.setElevation(10f);
             peekView.setElevation(10f);
@@ -189,8 +192,7 @@ public class PeekAndPop {
      * If the user is within the bounds, and is at the edges of the view, then
      * move it appropriately.
      */
-
-    private void handleTouch(@NonNull View view, @NonNull MotionEvent event, int position) {
+    protected void handleTouch(@NonNull View view, @NonNull MotionEvent event, int position) {
         if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
             pop(view, position);
         } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
@@ -278,7 +280,7 @@ public class PeekAndPop {
      * @param longClickView the view that was long clicked
      * @param index         the view that long clicked
      */
-    private void peek(@NonNull View longClickView, int index) {
+    protected void peek(@NonNull View longClickView, int index) {
         if (onGeneralActionListener != null)
             onGeneralActionListener.onPeek(longClickView, index);
 
@@ -301,6 +303,8 @@ public class PeekAndPop {
 
         gestureListener.setView(longClickView);
         gestureListener.setPosition(index);
+
+        PeekAnimationHelper.forceRippleAnimation(longClickView);
     }
 
     private void blurBackground() {
@@ -314,15 +318,14 @@ public class PeekAndPop {
      * @param longClickView the view that was long clicked
      * @param index         the view that long clicked
      */
-    private void pop(@NonNull View longClickView, int index) {
+    protected void pop(@NonNull View longClickView, int index) {
         if (onGeneralActionListener != null)
             onGeneralActionListener.onPop(longClickView, index);
 
-        if (currentHoldAndReleaseView != null && onHoldAndReleaseListener != null) {
+        if (currentHoldAndReleaseView != null && onHoldAndReleaseListener != null)
             onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
-            currentHoldAndReleaseView.getHoldAndReleaseTimer().cancel();
-            currentHoldAndReleaseView = null;
-        }
+
+        resetTimers();
 
         peekAnimationHelper.animatePop(new Animator.AnimatorListener() {
             @Override
@@ -375,7 +378,19 @@ public class PeekAndPop {
         peekView.setScaleY(0.85f);
     }
 
-    public void destroy(){
+    private void resetTimers(){
+        currentHoldAndReleaseView = null;
+        for (HoldAndReleaseView holdAndReleaseView : holdAndReleaseViews) {
+            if (holdAndReleaseView.getHoldAndReleaseTimer() != null)
+                holdAndReleaseView.getHoldAndReleaseTimer().cancel();
+        }
+        for (LongHoldView longHoldView : longHoldViews) {
+            if (longHoldView.getLongHoldTimer() != null)
+                longHoldView.getLongHoldTimer().cancel();
+        }
+    }
+
+    public void destroy() {
         if (currentHoldAndReleaseView != null && onHoldAndReleaseListener != null) {
             currentHoldAndReleaseView.getHoldAndReleaseTimer().cancel();
             currentHoldAndReleaseView = null;
@@ -392,7 +407,7 @@ public class PeekAndPop {
         builder = null;
     }
 
-    public void setFlingTypes(boolean allowUpwardsFling, boolean allowDownwardsFling){
+    public void setFlingTypes(boolean allowUpwardsFling, boolean allowDownwardsFling) {
         this.allowUpwardsFling = allowUpwardsFling;
         this.allowDownwardsFling = allowDownwardsFling;
     }
@@ -509,7 +524,7 @@ public class PeekAndPop {
         }
 
         /**
-         * Views which will open the onPeek view when long clicked
+         * Views which will show the peek view when long clicked
          *
          * @param longClickViews One or more views to handle on long click events
          * @return
@@ -605,7 +620,7 @@ public class PeekAndPop {
         /**
          * Set the accepted fling types, defaults to both being true.
          */
-        public Builder flingTypes(boolean allowUpwardsFling, boolean allowDownwardsFling){
+        public Builder flingTypes(boolean allowUpwardsFling, boolean allowDownwardsFling) {
             this.allowUpwardsFling = allowUpwardsFling;
             this.allowDownwardsFling = allowDownwardsFling;
             return this;
@@ -643,6 +658,7 @@ public class PeekAndPop {
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 longHoldTimer.cancel();
             }
+
             if (peekShown)
                 handleTouch(view, event, position);
 
