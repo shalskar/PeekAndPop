@@ -12,13 +12,13 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
-import android.widget.RelativeLayout;
-
+import android.widget.FrameLayout;
 import com.peekandpop.shalskar.peekandpop.model.HoldAndReleaseView;
 import com.peekandpop.shalskar.peekandpop.model.LongHoldView;
 
@@ -35,7 +35,7 @@ public class PeekAndPop {
     public static final int FLING_UPWARDS = 0;
     public static final int FLING_DOWNWARDS = 1;
 
-    private static final int PEEK_VIEW_MARGIN = 40;
+    private static final int PEEK_VIEW_MARGIN = 12;
 
     protected static final long LONG_CLICK_DURATION = 200;
     protected static final long LONG_HOLD_DURATION = 850;
@@ -117,13 +117,12 @@ public class PeekAndPop {
         contentView = (ViewGroup) builder.activity.findViewById(android.R.id.content).getRootView();
 
         // Center onPeek view in the onPeek layout and add to the container view group
-        peekLayout = (RelativeLayout) inflater.inflate(R.layout.peek_background, contentView, false);
+        peekLayout = (FrameLayout) inflater.inflate(R.layout.peek_background, contentView, false);
         peekView = inflater.inflate(builder.peekLayoutId, peekLayout, false);
         peekView.setId(R.id.peek_view);
 
-        RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) peekView.getLayoutParams();
-        layoutParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
-        layoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
+        FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) peekView.getLayoutParams();
+        layoutParams.gravity = Gravity.CENTER;
         if (orientation == Configuration.ORIENTATION_LANDSCAPE)
             layoutParams.topMargin = peekViewMargin;
 
@@ -175,11 +174,11 @@ public class PeekAndPop {
         for (int i = 0; i < builder.longClickViews.size(); i++) {
             initialiseGestureListener(builder.longClickViews.get(i), -1);
         }
+        gestureDetector.setIsLongpressEnabled(false);
     }
 
     protected void initialiseGestureListener(@NonNull View view, int position) {
         view.setOnTouchListener(new PeekAndPopOnTouchListener(position));
-        gestureDetector.setIsLongpressEnabled(false);
     }
 
     /**
@@ -271,7 +270,7 @@ public class PeekAndPop {
     private void initialisePeekViewOriginalPosition() {
         peekViewOriginalPosition = new float[2];
         peekViewOriginalPosition[0] = (peekLayout.getWidth() / 2) - (peekView.getWidth() / 2);
-        peekViewOriginalPosition[1] = (peekLayout.getHeight() / 2) - (peekView.getHeight() / 2);
+        peekViewOriginalPosition[1] = (peekLayout.getHeight() / 2) - (peekView.getHeight() / 2) + peekViewMargin;
     }
 
     /**
@@ -684,6 +683,10 @@ public class PeekAndPop {
                     });
                 }
             }, LONG_CLICK_DURATION);
+        }
+
+        public void setPosition(int position) {
+            this.position = position;
         }
     }
 
