@@ -15,12 +15,10 @@ certain amount of time).
 - Specify views within the peek view layout that can listen to hold and release events (where the user holds the view
  and then releases).
 
-### Demo: 
-
-<a href="url"><img src="http://i.giphy.com/14c7kKoK7Pizlu.gif" width="220" ></a>
+##Demo app
+<a href="https://github.com/shalskar/PeekAndPopDemo"><img src="http://i.giphy.com/14c7kKoK7Pizlu.gif" width="220" ></a>
+####https://github.com/shalskar/PeekAndPopDemo
 <br>
-
-
 
 ### Getting started:
 
