@@ -5,9 +5,12 @@ import android.app.Activity;
 import android.content.res.Configuration;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.IdRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.LayoutRes;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -19,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
+
 import com.peekandpop.shalskar.peekandpop.model.HoldAndReleaseView;
 import com.peekandpop.shalskar.peekandpop.model.LongHoldView;
 
@@ -39,7 +43,7 @@ public class PeekAndPop {
 
     protected static final long LONG_CLICK_DURATION = 200;
     protected static final long LONG_HOLD_DURATION = 850;
-    protected static final long HOLD_AND_RELEASE_DURATION = 100;
+    protected static final long HOLD_AND_RELEASE_DURATION = 50;
 
     private static final int FLING_VELOCITY_THRESHOLD = 3000;
     private static final float FLING_VELOCITY_MAX = 1000;
@@ -248,6 +252,7 @@ public class PeekAndPop {
                 holdAndReleaseView.getHoldAndReleaseTimer().cancel();
                 holdAndReleaseView.setHoldAndReleaseTimer(null);
                 if (holdAndReleaseView == currentHoldAndReleaseView) {
+                    triggerOnLeaveEvent(holdAndReleaseView.getView(), holdAndReleaseView.getPosition());
                     holdAndReleaseView.setPosition(-1);
                     currentHoldAndReleaseView = null;
                 }
@@ -322,7 +327,7 @@ public class PeekAndPop {
             onGeneralActionListener.onPop(longClickView, index);
 
         if (currentHoldAndReleaseView != null && onHoldAndReleaseListener != null)
-            onHoldAndReleaseListener.onHoldAndRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
+            onHoldAndReleaseListener.onRelease(currentHoldAndReleaseView.getView(), currentHoldAndReleaseView.getPosition());
 
         resetTimers();
 
@@ -344,11 +349,6 @@ public class PeekAndPop {
             public void onAnimationRepeat(Animator animation) {
             }
         }, ANIMATION_POP_DURATION);
-
-        for (LongHoldView longHoldView : longHoldViews) {
-            if (longHoldView.getLongHoldTimer() != null)
-                longHoldView.getLongHoldTimer().cancel();
-        }
 
         popTime = System.currentTimeMillis();
     }
@@ -377,7 +377,7 @@ public class PeekAndPop {
         peekView.setScaleY(0.85f);
     }
 
-    private void resetTimers(){
+    private void resetTimers() {
         currentHoldAndReleaseView = null;
         for (HoldAndReleaseView holdAndReleaseView : holdAndReleaseViews) {
             if (holdAndReleaseView.getHoldAndReleaseTimer() != null)
@@ -443,19 +443,47 @@ public class PeekAndPop {
     }
 
     /**
-     * Specify id of view WITHIN the peek layout, this view will receive on long hold events.
+     * Specify id of view WITHIN the peek layout, this view will trigger on long hold events.
      * You can add multiple on long hold views
      *
      * @param longHoldViewId id of the view to receive on long hold events
      * @return
      */
     public void addLongHoldView(@IdRes int longHoldViewId, boolean receiveMultipleEvents) {
-        this.longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), receiveMultipleEvents));
+        longHoldViews.add(new LongHoldView(peekView.findViewById(longHoldViewId), receiveMultipleEvents));
     }
 
-    // todo document
+    /**
+     * Specify id of view WITHIN the peek layout, this view will trigger the following events:
+     * onHold() - when the view is held for a small amount of time
+     * onLeave() - when the view is no longer held but the user is is still touching the screen
+     * onRelease() - when the user releases after holding the view
+     *
+     * You can add multiple HoldAndRelease views
+     *
+     * @param holdAndReleaseViewId id of the view to receive on long hold events
+     * @return
+     */
     public void addHoldAndReleaseView(@IdRes int holdAndReleaseViewId) {
-        this.holdAndReleaseViews.add(new HoldAndReleaseView(peekView.findViewById(holdAndReleaseViewId)));
+        holdAndReleaseViews.add(new HoldAndReleaseView(peekView.findViewById(holdAndReleaseViewId)));
+    }
+
+    public void triggerOnHoldEvent(@NonNull final View view, final int position) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                onHoldAndReleaseListener.onHold(view, position);
+            }
+        });
+    }
+
+    protected void triggerOnLeaveEvent(@NonNull final View view, final int position) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                onHoldAndReleaseListener.onLeave(view, position);
+            }
+        });
     }
 
     public View getPeekView() {
@@ -570,7 +598,7 @@ public class PeekAndPop {
         }
 
         /**
-         * A listener for the hold and release views to receive onHoldAndRelease actions.
+         * A listener for the hold and release views to receive onRelease actions.
          *
          * @param onHoldAndReleaseListener
          * @return
@@ -765,7 +793,11 @@ public class PeekAndPop {
     }
 
     public interface OnHoldAndReleaseListener {
-        void onHoldAndRelease(View view, int position);
+        void onHold(View view, int position);
+
+        void onLeave(View view, int position);
+
+        void onRelease(View view, int position);
     }
 
 }

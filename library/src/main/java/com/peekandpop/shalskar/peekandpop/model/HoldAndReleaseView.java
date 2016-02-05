@@ -33,6 +33,7 @@ public class HoldAndReleaseView {
             @Override
             public void run() {
                 peekAndPop.setCurrentHoldAndReleaseView(HoldAndReleaseView.this);
+                peekAndPop.triggerOnHoldEvent(view, position);
             }
         }, duration);
 
