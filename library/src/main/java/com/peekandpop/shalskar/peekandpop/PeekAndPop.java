@@ -666,7 +666,7 @@ public class PeekAndPop {
         }
     }
 
-    protected final class PeekAndPopOnTouchListener implements View.OnTouchListener {
+    protected class PeekAndPopOnTouchListener implements View.OnTouchListener {
 
         private int position;
         private Timer longHoldTimer;
@@ -718,7 +718,7 @@ public class PeekAndPop {
         }
     }
 
-    protected final class GestureListener extends GestureDetector.SimpleOnGestureListener {
+    protected class GestureListener extends GestureDetector.SimpleOnGestureListener {
 
         private int position;
         private View view;
