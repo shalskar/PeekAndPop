@@ -139,10 +139,10 @@ public class PeekAnimationHelper {
      *
      * @param view
      */
-    public static void forceRippleAnimation(@NonNull View view){
-        if(Build.VERSION.SDK_INT >= 21 && view.getBackground() instanceof  RippleDrawable)
+    public static void resetViewBackground(@NonNull View view){
+        if( view.getBackground() != null)
             view.getBackground().setState(new int[0]);
-        if(Build.VERSION.SDK_INT >= 23 && view.getForeground() instanceof  RippleDrawable)
+        if(Build.VERSION.SDK_INT >= 23 && view.getForeground() != null)
             view.getForeground().setState(new int[0]);
     }
 }

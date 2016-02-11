@@ -10,7 +10,6 @@ import android.os.Looper;
 import android.support.annotation.IdRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.LayoutRes;
-import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -308,7 +307,7 @@ public class PeekAndPop {
         gestureListener.setView(longClickView);
         gestureListener.setPosition(index);
 
-        PeekAnimationHelper.forceRippleAnimation(longClickView);
+        PeekAnimationHelper.resetViewBackground(longClickView);
     }
 
     private void blurBackground() {
