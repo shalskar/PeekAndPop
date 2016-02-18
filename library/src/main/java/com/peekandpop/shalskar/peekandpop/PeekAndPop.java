@@ -47,8 +47,8 @@ public class PeekAndPop {
     private static final int FLING_VELOCITY_THRESHOLD = 3000;
     private static final float FLING_VELOCITY_MAX = 1000;
 
-    protected static final int ANIMATION_PEEK_DURATION = 300;
-    protected static final int ANIMATION_POP_DURATION = 200;
+    protected static final int ANIMATION_PEEK_DURATION = 275;
+    protected static final int ANIMATION_POP_DURATION = 250;
 
     protected Builder builder;
     protected View peekView;
@@ -338,6 +338,7 @@ public class PeekAndPop {
             @Override
             public void onAnimationEnd(Animator animation) {
                 resetViews();
+                animation.cancel();
             }
 
             @Override

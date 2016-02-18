@@ -62,6 +62,7 @@ public class PeekAnimationHelper {
         ObjectAnimator animatorLayoutAlpha = ObjectAnimator.ofFloat(peekLayout, "alpha", 0);
         animatorLayoutAlpha.setDuration(duration);
         animatorLayoutAlpha.addListener(animatorListener);
+        animatorLayoutAlpha.setInterpolator(new DecelerateInterpolator(1.5f));
 
         animatorLayoutAlpha.start();
         animateReturn(duration);
