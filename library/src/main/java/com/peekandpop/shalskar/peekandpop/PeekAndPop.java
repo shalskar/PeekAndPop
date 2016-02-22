@@ -226,6 +226,7 @@ public class PeekAndPop {
             if (viewInBounds && longHoldView.getLongHoldTimer() == null) {
                 long duration = customLongHoldDuration != -1 ? customLongHoldDuration : LONG_HOLD_DURATION;
                 longHoldView.startLongHoldViewTimer(this, position, duration);
+                onLongHoldListener.onEnter(longHoldView.getView(), position);
             } else if (!viewInBounds && longHoldView.getLongHoldTimer() != null) {
                 longHoldView.getLongHoldTimer().cancel();
                 longHoldView.setLongHoldTimer(null);
@@ -789,6 +790,8 @@ public class PeekAndPop {
     }
 
     public interface OnLongHoldListener {
+        void onEnter(View view, int position);
+
         void onLongHold(View view, int position);
     }
 
