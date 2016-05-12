@@ -134,16 +134,4 @@ public class PeekAnimationHelper {
             animatorTranslateX.start();
         }
     }
-
-    /**
-     * Workaround due to custom long touch listener causing ripples not to pop.
-     *
-     * @param view
-     */
-    public static void resetViewBackground(@NonNull View view){
-        if( view.getBackground() != null)
-            view.getBackground().setState(new int[0]);
-        if(Build.VERSION.SDK_INT >= 23 && view.getForeground() != null)
-            view.getForeground().setState(new int[0]);
-    }
 }

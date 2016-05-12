@@ -7,6 +7,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.support.annotation.IdRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.LayoutRes;
@@ -290,11 +291,12 @@ public class PeekAndPop {
 
         peekLayout.setVisibility(View.VISIBLE);
 
+        cancelClick(longClickView);
+
         if (Build.VERSION.SDK_INT >= 17 && blurBackground)
             blurBackground();
         else if (Build.VERSION.SDK_INT < 17 && blurBackground)
             Log.e("PeekAndPop", "Unable to blur background, device version below 17");
-
 
         peekAnimationHelper.animatePeek(ANIMATION_PEEK_DURATION);
 
@@ -307,8 +309,21 @@ public class PeekAndPop {
 
         gestureListener.setView(longClickView);
         gestureListener.setPosition(index);
+    }
 
-        PeekAnimationHelper.resetViewBackground(longClickView);
+    /**
+     * Once the peek view has been shown, send a cancel motion event to the long hold view so that
+     * it isn't left in a pressed state
+     *
+     * @param longClickView the view that was long clicked
+     */
+    private void cancelClick(@NonNull View longClickView) {
+        MotionEvent e = MotionEvent.obtain(SystemClock.uptimeMillis(),
+                SystemClock.uptimeMillis(),
+                MotionEvent.ACTION_CANCEL,
+                0, 0, 0);
+        longClickView.onTouchEvent(e);
+        e.recycle();
     }
 
     private void blurBackground() {
@@ -459,7 +474,7 @@ public class PeekAndPop {
      * onHold() - when the view is held for a small amount of time
      * onLeave() - when the view is no longer held but the user is is still touching the screen
      * onRelease() - when the user releases after holding the view
-     *
+     * <p/>
      * You can add multiple HoldAndRelease views
      *
      * @param holdAndReleaseViewId id of the view to receive on long hold events
