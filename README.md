@@ -37,7 +37,7 @@ And then you will need to add the following dependency to your applications `bui
 
 ```gradle
 dependencies {
-        compile 'com.github.shalskar:PeekAndPop:v0.1.1'
+	compile 'com.github.shalskar:PeekAndPop:v1.0'
 }
 ```
 
@@ -125,18 +125,27 @@ And if you don't want to animate the view when flinging:
 .animateFling(false)
 ```
 
-##### Listening for hold and release events
+##### Listening for hold, leave and release events
 
 <a href="url"><img src="http://i.giphy.com/PSwj0k9tNj9bq.gif" width="220" ></a>
 <br>
 
 
-Similar to Instagram, you can specify views inside the peek layout that will trigger events if the user releases on them:
+Similar to Instagram, you can specify views inside the peek layout that will trigger events if the user holds, leaves or releases on them:
 
 ```java
 .onHoldAndReleaseListener(new PeekAndPop.OnHoldAndReleaseListener() {
         @Override
-        public void onHoldAndRelease(View view, int position) {
+        public void onHold(View view, int position) {
+                        
+        }
+        @Override
+        public void onLeave(View view, int position) {
+                        
+        }
+        
+        @Override
+        public void onRelease(View view, int position) {
                         
         }
 })
@@ -156,8 +165,15 @@ peekAndPop.addHoldAndReleaseView(R.id.view2);
 
 You can specify views inside the peek layout that will trigger an event if the user holds their finger/thumb over the view for a certain duration (default is 850ms). If `receiveMultipleEvents` is true than events will be contiuously triggered until the user moves their finger/thumb off the view:
 
+onEnter events are also fired when the user's touch first enters the view's bounds.
+
 ```java
 .onLongHoldListener(new PeekAndPop.OnLongHoldListener() {
+        @Override
+        public void onEnter(View view, int position) {
+                        
+        }
+        
         @Override
         public void onLongHold(View view, int position) {
                         
