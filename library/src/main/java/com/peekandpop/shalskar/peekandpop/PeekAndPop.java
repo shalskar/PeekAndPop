@@ -686,6 +686,7 @@ public class PeekAndPop {
 
         private int position;
         private Timer longHoldTimer;
+        private Runnable longHoldRunnable;
         private boolean peekShown;
 
         public PeekAndPopOnTouchListener(int position) {
@@ -699,13 +700,34 @@ public class PeekAndPop {
                 peekShown = false;
                 startTimer(view);
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-                longHoldTimer.cancel();
+                cancelPendingTimer(view);
             }
 
             if (peekShown)
                 handleTouch(view, event, position);
 
             return peekShown;
+        }
+
+        /**
+         * Cancel pending timer and if the timer has already activated, run another runnable to
+         * pop the view.
+         *
+         * @param view
+         */
+        private void cancelPendingTimer(@NonNull final View view){
+            longHoldTimer.cancel();
+            if(longHoldRunnable != null){
+                longHoldRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        peekShown = false;
+                        pop(view, position);
+                        longHoldRunnable = null;
+                    }
+                };
+                builder.activity.runOnUiThread(longHoldRunnable);
+            }
         }
 
         /**
@@ -718,13 +740,15 @@ public class PeekAndPop {
             longHoldTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    builder.activity.runOnUiThread(new Runnable() {
+                    longHoldRunnable = new Runnable() {
                         @Override
                         public void run() {
                             peekShown = true;
                             peek(view, position);
+                            longHoldRunnable = null;
                         }
-                    });
+                    };
+                    builder.activity.runOnUiThread(longHoldRunnable);
                 }
             }, LONG_CLICK_DURATION);
         }

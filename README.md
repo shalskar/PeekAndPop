@@ -37,7 +37,7 @@ And then you will need to add the following dependency to your applications `bui
 
 ```gradle
 dependencies {
-	compile 'com.github.shalskar:PeekAndPop:v1.0'
+	compile 'com.github.shalskar:PeekAndPop:v1.0.1'
 }
 ```
 
