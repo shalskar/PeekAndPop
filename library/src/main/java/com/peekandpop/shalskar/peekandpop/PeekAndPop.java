@@ -740,12 +740,14 @@ public class PeekAndPop {
             longHoldTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
+                    peekShown = true;
                     longHoldRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            peekShown = true;
-                            peek(view, position);
-                            longHoldRunnable = null;
+                            if(peekShown) {
+                                peek(view, position);
+                                longHoldRunnable = null;
+                            }
                         }
                     };
                     builder.activity.runOnUiThread(longHoldRunnable);
