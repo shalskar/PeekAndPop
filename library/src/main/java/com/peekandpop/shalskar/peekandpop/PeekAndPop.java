@@ -62,6 +62,7 @@ public class PeekAndPop {
     private boolean allowUpwardsFling;
     private boolean allowDownwardsFling;
     private int customLongHoldDuration = -1;
+    private boolean enabled = true;
 
     protected ArrayList<LongHoldView> longHoldViews;
     protected ArrayList<HoldAndReleaseView> holdAndReleaseViews;
@@ -526,6 +527,14 @@ public class PeekAndPop {
         this.customLongHoldDuration = duration;
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     /**
      * Builder class used for creating the PeekAndPop view.
      */
@@ -696,6 +705,8 @@ public class PeekAndPop {
 
         @Override
         public boolean onTouch(final View view, MotionEvent event) {
+            if (!enabled) return false;
+
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 peekShown = false;
                 startTimer(view);
