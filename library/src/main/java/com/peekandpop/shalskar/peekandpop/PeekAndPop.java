@@ -173,7 +173,7 @@ public class PeekAndPop {
     }
 
     /**
-     * Set an onLongClick, onClick and onTouch listener for each long click view.
+     * Set an onClick and onTouch listener for each long click view.
      */
     protected void initialiseGestureListeners() {
         for (int i = 0; i < builder.longClickViews.size(); i++) {
@@ -184,6 +184,15 @@ public class PeekAndPop {
 
     protected void initialiseGestureListener(@NonNull View view, int position) {
         view.setOnTouchListener(new PeekAndPopOnTouchListener(position));
+        // onTouchListener will not work correctly if the view doesn't have an
+        // onClickListener set, hence adding one if none has been added.
+        if(!view.hasOnClickListeners()){
+            view.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                }
+            });
+        }
     }
 
     /**
@@ -328,7 +337,13 @@ public class PeekAndPop {
     }
 
     private void blurBackground() {
-        peekLayout.setBackgroundDrawable(new BitmapDrawable(builder.activity.getResources(), BlurBuilder.blur(contentView)));
+        if (Build.VERSION.SDK_INT >= 16) {
+            peekLayout.setBackground(null);
+            peekLayout.setBackground(new BitmapDrawable(builder.activity.getResources(), BlurBuilder.blur(contentView)));
+        }else {
+            peekLayout.setBackgroundDrawable(null);
+            peekLayout.setBackgroundDrawable(new BitmapDrawable(builder.activity.getResources(), BlurBuilder.blur(contentView)));
+        }
     }
 
     /**
@@ -726,9 +741,9 @@ public class PeekAndPop {
          *
          * @param view
          */
-        private void cancelPendingTimer(@NonNull final View view){
+        private void cancelPendingTimer(@NonNull final View view) {
             longHoldTimer.cancel();
-            if(longHoldRunnable != null){
+            if (longHoldRunnable != null) {
                 longHoldRunnable = new Runnable() {
                     @Override
                     public void run() {
@@ -751,12 +766,14 @@ public class PeekAndPop {
             longHoldTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
+                    peekShown = true;
                     longHoldRunnable = new Runnable() {
                         @Override
                         public void run() {
-                            peekShown = true;
-                            peek(view, position);
-                            longHoldRunnable = null;
+                            if (peekShown) {
+                                peek(view, position);
+                                longHoldRunnable = null;
+                            }
                         }
                     };
                     builder.activity.runOnUiThread(longHoldRunnable);
