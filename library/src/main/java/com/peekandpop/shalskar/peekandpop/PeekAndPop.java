@@ -74,6 +74,7 @@ public class PeekAndPop {
     protected OnHoldAndReleaseListener onHoldAndReleaseListener;
     protected GestureListener gestureListener;
     protected GestureDetector gestureDetector;
+    private Timer longHoldTimer = new Timer();
 
     protected int orientation;
     protected float[] peekViewOriginalPosition;
@@ -709,13 +710,11 @@ public class PeekAndPop {
     protected class PeekAndPopOnTouchListener implements View.OnTouchListener {
 
         private int position;
-        private Timer longHoldTimer;
         private Runnable longHoldRunnable;
         private boolean peekShown;
 
         public PeekAndPopOnTouchListener(int position) {
             this.position = position;
-            longHoldTimer = new Timer();
         }
 
         @Override
@@ -724,6 +723,7 @@ public class PeekAndPop {
 
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 peekShown = false;
+                cancelPendingTimer(view);
                 startTimer(view);
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 cancelPendingTimer(view);
